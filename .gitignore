@@ -1,0 +1,12 @@
+.venv
+*.ipynb_checkpoints
+*.ipynb
+__pycache__/
+data/msk_chord_2024/
+.vscode/
+.DS_Store
+*.pt
+*.egg-info
+.pytest_cache/
+.cache/
+logs/

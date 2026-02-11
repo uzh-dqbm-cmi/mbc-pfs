@@ -1,0 +1,11 @@
+PYTHONUNBUFFERED=1 python cpu_nested_cv.py --models coxph,gbsa,rsf 2>&1 | tee logs/cpu_nested_cv_$(date +%Y%m%d_%H%M%S).log
+
+PYTHONUNBUFFERED=1 python cpu_nested_cv.py --no-treatment-masking --models coxph,gbsa,rsf 2>&1 | tee logs/cpu_leakage_nested_cv_$(date +%Y%m%d_%H%M%S).log
+
+PYTHONUNBUFFERED=1 python dl_nested_cv.py --models deepsurv,deephit 2>&1 | tee logs/dl_nested_cv_$(date +%Y%m%d_%H%M%S).log
+
+PYTHONUNBUFFERED=1 python dl_nested_cv.py --no-treatment-masking --models deepsurv,deephit 2>&1 | tee logs/dl_leakage_nested_cv_$(date +%Y%m%d_%H%M%S).log
+
+PYTHONUNBUFFERED=1 python ablation.py --models deepsurv,deephit --runner dl 2>&1 | tee logs/dl_ablation_$(date +%Y%m%d_%H%M%S).log
+
+PYTHONUNBUFFERED=1 python ablation.py --models coxph,gbsa,rsf --runner cpu --max-parallel 32 2>&1 | tee logs/cpu_ablation_$(date +%Y%m%d_%H%M%S).log

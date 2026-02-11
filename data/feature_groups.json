@@ -1,0 +1,55 @@
+{
+  "Tumor marker kinetics": {
+    "include_prefix": ["CA15_3_", "CEA_"],
+    "exclude_regex": ["_MISSING$", "_LAST_OBS_DAY$"]
+  },
+
+  "Recent ECOG status": {
+    "include_exact": ["ECOG_LAST_OBS", "EVER_GE2_180D"]
+  },
+
+  "Tumor site burden": {
+    "include_regex": ["^TUMOR_SITE_.*_(IN_WINDOW|EVER)$"]
+  },
+
+  "Genomics and therapeutic targets": {
+    "include_exact": ["HR", "HER2"],
+    "include_prefix": ["PDL1", "MMR", "GENOMICS"]
+  },
+
+  "Initial diagnosis": {
+    "include_prefix": [
+      "STAGE",
+      "CLINICAL_GROUP",
+      "PATH_GROUP",
+      "HISTOLOGIC",
+      "SUMMARY",
+      "CANCER_SITE_SUBSITE",
+      "AGE",
+      "GENDER_IS_FEMALE"
+    ]
+  },
+
+  "Treatment exposure": {
+    "include_prefix": ["PLANNED_"]
+  },
+
+  "Imaging coverage and cancer status": {
+    "include_regex": [
+      "^CANCER_.*_IMAGED_(Y|N|INDET)_STATUS$",
+      "^CANCER_.*_EVER$"
+    ],
+    "exclude_regex": ["^CANCER_SITE_SUBSITE_"]
+  },
+
+  "Measurement cadence": {
+    "include_exact": ["ECOG_LAST_OBS_DAY", "ECOG_MISSING"],
+    "include_regex": [
+      "^CANCER_.*_MISSING$",
+      "^CA15_3_.*_MISSING$",
+      "^CEA_.*_MISSING$",
+      "^CA15_3_LAST_OBS_DAY$",
+      "^CEA_LAST_OBS_DAY$"
+    ]
+  }
+}
