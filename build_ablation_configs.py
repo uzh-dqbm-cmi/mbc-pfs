@@ -6,12 +6,12 @@ from pathlib import Path
 from typing import Sequence
 
 DEFAULT_MODELS = ("coxph", "deephit", "deepsurv", "gbsa", "rsf")
+MIN_CONFIG_COUNT = 3
 
 
 def build_ablation_configs(
     results_root: Path,
-    models: Sequence[str] = DEFAULT_MODELS,
-    min_config_count: int = 2,
+    models: Sequence[str],
 ) -> dict[str, list[str]]:
     out: dict[str, list[str]] = {}
     for model in models:
@@ -24,42 +24,26 @@ def build_ablation_configs(
             if isinstance(item, dict) and item.get("results_path")
         )
         configs = sorted(
-            name for name, n in counts.items() if n >= int(min_config_count)
+            name for name, n in counts.items() if n >= int(MIN_CONFIG_COUNT)
         )
         if not configs:
             raise ValueError(
-                f"No ablation configs found for model {model} with count >= {min_config_count}."
+                f"No ablation configs found for model {model} with count >= {MIN_CONFIG_COUNT}."
             )
         out[model] = configs
     return out
 
 
-def write_ablation_configs(
-    out_path: Path = Path("data/ablation_configs.json"),
-    results_root: Path = Path("results"),
-    models: Sequence[str] = DEFAULT_MODELS,
-    min_config_count: int = 2,
-) -> dict[str, list[str]]:
+def main() -> None:
+    out_path: Path = Path("data/ablation_configs.json")
     configs = build_ablation_configs(
-        results_root=results_root,
-        models=models,
-        min_config_count=min_config_count,
+        results_root=Path("results"),
+        models=DEFAULT_MODELS,
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w") as f:
         json.dump(configs, f, indent=2)
-    return configs
-
-
-def main() -> None:
-    models = DEFAULT_MODELS
-    write_ablation_configs(
-        out_path=Path("data/ablation_configs.json"),
-        results_root=Path("results"),
-        models=models,
-        min_config_count=2,
-    )
-    print(f"Wrote {Path('data/ablation_configs.json')}")
+    print(f"Wrote {out_path}")
 
 
 if __name__ == "__main__":

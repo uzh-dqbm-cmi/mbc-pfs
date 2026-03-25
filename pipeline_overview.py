@@ -53,6 +53,7 @@ cancer_presence.RADIOLOGY_REPORT_WINDOW_DAYS = RADIOLOGY_REPORT_WINDOW_DAYS
 
 PFS_PATH = Path(f"data/{CANCER_TYPE}_pfs.csv")
 TREATMENT_OUTPUT_PATH = Path(f"data/{CANCER_TYPE}_treatment.csv")
+ref = pd.read_csv("data/brca_dx_1st_seq_OS.csv")
 
 
 # Step 1: filter to breast-only primary diagnoses.
@@ -60,6 +61,8 @@ diag, TYPE_SPECIFIC_PATIENT_IDS, STAGE_IV_PATIENTS = prep_diagnosis()
 first_metastasis_by_patient = first_metastasis_start_dates(TYPE_SPECIFIC_PATIENT_IDS)
 
 print(f"Step 1 — Breast-only patients: {len(TYPE_SPECIFIC_PATIENT_IDS):,}")
+
+assert TYPE_SPECIFIC_PATIENT_IDS.issubset(ref[PATIENT_ID_COL].unique())
 
 # Step 2: load treatment/progression timelines, drop Bone treatment, and keep patients with both data types.
 from build_pfs import _norm
@@ -204,6 +207,53 @@ print(f"Total lines before filtering: {len(pfs):,}")
 
 
 # # Step 3: apply administrative censoring and persist PFS table.
+def print_outcome_breakdown(df: pd.DataFrame, label: str) -> None:
+    required_cols = {EVENT_COL, "LINE_SOURCE"}
+    missing_cols = required_cols.difference(df.columns)
+    if missing_cols:
+        raise ValueError(
+            f"{label} is missing required columns for outcome summary: {sorted(missing_cols)}"
+        )
+
+    event_mask = df[EVENT_COL] == 1
+    censor_mask = df[EVENT_COL] == 0
+    progression_event_mask = event_mask & (
+        df["LINE_SOURCE"] == "labelled_by_progression_event"
+    )
+    death_event_mask = event_mask & (df["LINE_SOURCE"] == "labelled_by_death_event")
+    observed_non_progression_mask = censor_mask & (
+        df["LINE_SOURCE"] == "labelled_by_non_progression"
+    )
+    admin_censor_mask = censor_mask & ~observed_non_progression_mask
+
+    n_lines = int(len(df))
+    n_events = int(event_mask.sum())
+    n_censored = int(censor_mask.sum())
+    n_progression_events = int(progression_event_mask.sum())
+    n_death_events = int(death_event_mask.sum())
+    n_observed_non_progression = int(observed_non_progression_mask.sum())
+    n_admin_censored = int(admin_censor_mask.sum())
+
+    assert (
+        n_progression_events + n_death_events == n_events
+    ), "Final events should be fully explained by progression or death."
+    assert (
+        n_observed_non_progression + n_admin_censored == n_censored
+    ), "Final censored lines should be fully explained by non-progression or admin censoring."
+
+    print(f"{label} outcome breakdown across {n_lines:,} lines:")
+    print(
+        "  Events:"
+        f" {n_events:,} ({n_progression_events:,} labelled by progression,"
+        f" {n_death_events:,} labelled by death)"
+    )
+    print(
+        "  Censored:"
+        f" {n_censored:,} ({n_observed_non_progression:,} labelled by non-progression,"
+        f" {n_admin_censored:,} administratively censored at {ADMIN_CENSOR_DAYS:,} days)"
+    )
+
+
 def apply_censor(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     longer_mask = (df[TIME_COL] > ADMIN_CENSOR_DAYS) & (df[EVENT_COL] != -1)
@@ -233,3 +283,4 @@ print(f"Design matrix shape: {design_matrix.shape}")
 print(f"unique patients in design matrix: {design_matrix[PATIENT_ID_COL].nunique():,}")
 print(f"Step 5 — Final usable lines in design matrix: {design_matrix.shape}")
 print(f"Design matrix event distribution: {design_matrix[EVENT_COL].value_counts()}")
+print_outcome_breakdown(design_matrix, label="Design matrix")

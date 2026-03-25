@@ -2,7 +2,10 @@ import json
 from pathlib import Path
 from typing import Dict, List
 
-import torch
+try:
+    import torch
+except ModuleNotFoundError:  # pragma: no cover
+    torch = None
 
 RESULTS_PATH = Path("results")
 PATIENCE = 50

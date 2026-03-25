@@ -14,7 +14,8 @@
 
   "Genomics and therapeutic targets": {
     "include_exact": ["HR", "HER2"],
-    "include_prefix": ["PDL1", "MMR", "GENOMICS"]
+    "include_prefix": ["PDL1", "MMR", "GENOMICS"],
+    "exclude_exact": ["GENOMICS_MISSING"]
   },
 
   "Initial diagnosis": {
@@ -31,7 +32,7 @@
   },
 
   "Treatment exposure": {
-    "include_prefix": ["PLANNED_"]
+    "include_prefix": ["PLANNED_", "IS_MLOT"]
   },
 
   "Imaging coverage and cancer status": {
@@ -43,7 +44,7 @@
   },
 
   "Measurement cadence": {
-    "include_exact": ["ECOG_LAST_OBS_DAY", "ECOG_MISSING"],
+    "include_exact": ["ECOG_LAST_OBS_DAY", "ECOG_MISSING", "GENOMICS_MISSING"],
     "include_regex": [
       "^CANCER_.*_MISSING$",
       "^CA15_3_.*_MISSING$",

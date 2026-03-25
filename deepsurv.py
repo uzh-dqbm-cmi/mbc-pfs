@@ -66,6 +66,7 @@ def train_deepsurv(
         raise ValueError("outdir must be provided for train_deepsurv.")
 
     _seed_reproducibly(int(config["seed"]))
+    RNG = np.random.default_rng(config["seed"])
     os.makedirs(outdir, exist_ok=True)
     splits = preprocess_df(
         train_idx=train_idx,
@@ -85,8 +86,16 @@ def train_deepsurv(
     X_val = torch.tensor(splits["X_val_np"], dtype=torch.float32, device=DEVICE)
     time_val = torch.tensor(splits["time_val_arr"], dtype=torch.float32, device=DEVICE)
     event_val = torch.tensor(splits["event_val_arr"], dtype=torch.int32, device=DEVICE)
+    X_test = torch.tensor(splits["X_test_np"], dtype=torch.float32, device=DEVICE)
+    time_test = torch.tensor(
+        splits["time_test_arr"], dtype=torch.float32, device=DEVICE
+    )
+    event_test = torch.tensor(
+        splits["event_test_arr"], dtype=torch.int32, device=DEVICE
+    )
     train_data = list(zip(X_train, time_train, event_train))
     val_data = list(zip(X_val, time_val, event_val))
+    test_data = list(zip(X_test, time_test, event_test))
 
     num_input_features = X_train.size(1)
 

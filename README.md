@@ -41,7 +41,8 @@ python build_ablation_configs.py
 python ablation.py --models deepsurv,deephit --runner dl
 python ablation.py --models coxph,gbsa,rsf --runner cpu --max-parallel 32
 ```
+Alternatively, refer to `commands.txt` for running models with log outputs and timing.
 
 # Data analysis
 
-Simply run `python manuscript.py` to generate all results reported in the manuscript after all experiments are completed.
+`python manuscript.py` will generate all results reported in the manuscript after all experiments are completed.

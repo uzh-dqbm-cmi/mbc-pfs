@@ -176,6 +176,7 @@
   "HISTORY_TREATMENT_TARGETED_LAST_OBS_DAY": "Days since last targeted therapy",
   "HISTORY_TREATMENT_TARGETED_LAST_STOP_DAY": "Days since last targeted therapy",
   "HR": "Hormone receptor positive",
+  "IS_MLOT1": "First metastatic line",
   "MMR_NEG": "MMR negative",
   "MMR_POS": "MMR positive",
   "MMR_UNKNOWN": "MMR unknown",

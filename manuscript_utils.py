@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import re
-from collections import defaultdict
-from dataclasses import dataclass
+from collections import Counter, defaultdict
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, Mapping, Sequence
 
@@ -12,10 +12,32 @@ import pandas as pd
 from tabulate import tabulate
 from scipy import stats
 from scipy.stats import chi2_contingency
+from sklearn.cluster import KMeans
 from lifelines import KaplanMeierFitter
 from lifelines.utils import restricted_mean_survival_time
 from scipy.stats import spearmanr
 from survival_metrics import mae_pred_vs_km, rmst_from_curve
+
+
+from config import ADMIN_CENSOR_DAYS, MODALITY_GROUPS, PATIENT_ID_COL, RANDOM_STATE
+from plots import (
+    EVENT_COL,
+    SUBTYPE_ORDER,
+    TIME_COL,
+    load_feature_group_map,
+    plot_full_group_individual_time_curves,
+    plot_group_mean_abs_shap,
+    plot_hrher2_time_curves,
+    plot_km_late_start_vs_rest,
+    plot_km_modeled_vs_no_rad_prior,
+    plot_mean_surv_late_start,
+    plot_mean_surv_late_start_systemic_vs_local_clean_leakage,
+    plot_modality_best_model_metric_deltas,
+    plot_population_km_vs_mean,
+    plot_shap_summary_from_arrays,
+    plot_single_sample_shap_waterfall_from_arrays,
+    plot_tertile_stratified_survival_and_km,
+)
 
 # %%
 MODEL = "gbsa"
@@ -24,9 +46,14 @@ OUTPUT_DIR = Path("figures")
 from config import AUC, C_INDEX
 
 BASE_MODELS: Sequence[str] = sorted(("coxph", "deephit", "deepsurv", "gbsa", "rsf"))
+OVERALL_PERFORMANCE_BOOTSTRAP_HORIZONS: tuple[float, float] = (365.0, 730.0)
+OVERALL_PERFORMANCE_BOOTSTRAP_N = 20
+OVERALL_PERFORMANCE_BOOTSTRAP_ALPHA = 0.95
+DEEPHIT_BOOTSTRAP_INTERP_GRID = np.arange(0.0, float(ADMIN_CENSOR_DAYS), 1.0)
 
 
 def assign_tertiles(values: pd.Series) -> pd.Series:
+    """Assign `low`/`mid`/`high` by equal-frequency thirds of the valid scores."""
     values = pd.to_numeric(values, errors="coerce")
     valid = values.dropna()
     strata = pd.Series(index=values.index, dtype=object)
@@ -40,6 +67,38 @@ def assign_tertiles(values: pd.Series) -> pd.Series:
     strata.loc[ordered_idx[:cutoff1]] = "low"
     strata.loc[ordered_idx[cutoff1:cutoff2]] = "mid"
     strata.loc[ordered_idx[cutoff2:]] = "high"
+    return strata
+
+
+def assign_kmeans_strata(
+    values: pd.Series,
+    n_clusters: int,
+    random_state: int,
+) -> pd.Series:
+    """Cluster 1D risk scores into ordered `low`/`mid`/`high` groups with k-means."""
+    values = pd.to_numeric(values, errors="coerce")
+    valid = values.dropna()
+    strata = pd.Series(index=values.index, dtype=object)
+    if valid.empty:
+        return strata
+
+    if int(n_clusters) != 3 or valid.shape[0] < int(n_clusters):
+        return assign_tertiles(values)
+
+    model = KMeans(
+        n_clusters=int(n_clusters),
+        random_state=int(random_state),
+        n_init=20,
+    )
+    cluster_ids = model.fit_predict(valid.to_numpy(dtype=float).reshape(-1, 1))
+    centers = model.cluster_centers_.reshape(-1)
+    ordered_clusters = np.argsort(centers)
+    label_map = {
+        int(ordered_clusters[0]): "low",
+        int(ordered_clusters[1]): "mid",
+        int(ordered_clusters[2]): "high",
+    }
+    strata.loc[valid.index] = pd.Series(cluster_ids, index=valid.index).map(label_map)
     return strata
 
 
@@ -102,6 +161,23 @@ class ModelStat:
     scalars: Dict[str, ScalarMetricSummary]
     series: Dict[str, TimeMetricSeries]
     hrher2_series: Dict[str, Dict[str, TimeMetricSeries]]
+
+
+@dataclass
+class BootstrapScalarMetricSummary:
+    point_estimate: float
+    ci_low: float
+    ci_high: float
+    bootstrap_mean: float
+    bootstrap_sd: float
+    values: list[float]
+
+
+@dataclass
+class BootstrapModelStat:
+    name: str
+    scalars: Dict[str, BootstrapScalarMetricSummary]
+    resolved_horizons: Dict[str, float]
 
 
 def median_pfs(pfs: pd.Series, events: pd.Series) -> float:
@@ -286,7 +362,7 @@ def treatment_combinations_to_latex_rows(
     pct_decimals: int = 1,
     indent: str = "    ",
     print_rows: bool = True,
-    csv_path: str | Path | None = None,
+    csv_path: str | Path | bool | None = None,
 ) -> str:
     """
     Produce LaTeX table rows like:
@@ -351,7 +427,7 @@ def treatment_combinations_to_latex_rows(
         csv_path = (
             Path("data") / f"treatment_combinations_{col_key.lower()}{suffix}.csv"
         )
-    if csv_path:
+    if csv_path is not False:
         csv_path = Path(csv_path)
         csv_path.parent.mkdir(parents=True, exist_ok=True)
         combinations.to_csv(csv_path, index=False)
@@ -419,21 +495,15 @@ def print_formatted_model_stats(
     Each row has the first column filled only for the first metric to match the target
     snippet, with subsequent rows prefixed by '&'.
     """
-    metric_rows: list[tuple[str, str, bool]] = [
-        ("C-index", C_INDEX, False),
-        ("mean AUC", AUC, False),
-        ("AUC @ 1y", "auc_at_1y", False),
-        ("AUC @ 2y", "auc_at_2y", False),
-        ("IBS", "IBS", True),
-    ]
-
     models = list(row_order) if row_order is not None else list(model_perf.keys())
 
     def _fmt(mean_val: float, std_val: float, bold: bool) -> str:
         inner = f"{mean_val:.{mean_decimals}f} \\pm {std_val:.{std_decimals}f}"
         return f"$\\mathbf{{{inner}}}$" if bold else f"${inner}$"
 
-    for idx, (label, metric_key, lower_is_better) in enumerate(metric_rows):
+    for idx, (label, metric_key, lower_is_better) in enumerate(
+        _overall_performance_metric_rows()
+    ):
         means: list[float] = []
         stds: list[float] = []
         for model in models:
@@ -460,6 +530,282 @@ def _safe_float(value: object) -> float:
         return float(value)
     except (TypeError, ValueError):
         return float("nan")
+
+
+def _overall_performance_metric_rows() -> list[tuple[str, str, bool]]:
+    return [
+        ("C-index", C_INDEX, False),
+        ("mean AUC", AUC, False),
+        ("AUC @ 1y", "auc_at_1y", False),
+        ("AUC @ 2y", "auc_at_2y", False),
+        ("IBS", "IBS", True),
+    ]
+
+
+def _patient_bootstrap_groups(patient_ids: Sequence[str]) -> list[np.ndarray]:
+    row_idx = np.arange(len(patient_ids), dtype=int)
+    group_df = pd.DataFrame(
+        {"row_idx": row_idx, PATIENT_ID_COL: np.asarray(patient_ids, dtype=str)}
+    )
+    return [
+        grp["row_idx"].to_numpy(dtype=int)
+        for _, grp in group_df.groupby(PATIENT_ID_COL, sort=False)
+    ]
+
+
+def _interp_survival_matrix_to_grid(
+    time_grid: np.ndarray,
+    surv_np: np.ndarray,
+    target_time_grid: np.ndarray,
+) -> np.ndarray:
+    time_grid = np.asarray(time_grid, dtype=float).reshape(-1)
+    surv_np = np.asarray(surv_np, dtype=float)
+    target_time_grid = np.asarray(target_time_grid, dtype=float).reshape(-1)
+    if surv_np.ndim != 2 or surv_np.shape[1] != time_grid.shape[0]:
+        raise ValueError(
+            "surv_np must be a (n_samples, n_times) array aligned with time_grid."
+        )
+    if time_grid.size == 0 or target_time_grid.size == 0:
+        raise ValueError("time grids must be non-empty.")
+    if np.any(np.diff(time_grid) < 0):
+        raise ValueError("time_grid must be sorted in non-decreasing order.")
+
+    interp_rows = [
+        np.interp(
+            target_time_grid,
+            time_grid,
+            row,
+            left=float(row[0]),
+            right=float(row[-1]),
+        )
+        for row in surv_np
+    ]
+    return np.asarray(interp_rows, dtype=float)
+
+
+def _evaluate_bootstrap_overall_metrics(
+    durations: np.ndarray,
+    events: np.ndarray,
+    surv_np: np.ndarray,
+    time_grid: np.ndarray,
+    eval_horizons: Sequence[float] = OVERALL_PERFORMANCE_BOOTSTRAP_HORIZONS,
+) -> tuple[dict[str, float], dict[str, float]]:
+    from pycox.evaluation import EvalSurv
+    from sksurv.util import Surv
+    from SurvivalEVAL.Evaluator import SurvivalEvaluator
+
+    from utils import compute_time_dependent_auc
+
+    durations = np.asarray(durations, dtype=float)
+    events = np.asarray(events, dtype=int)
+    surv_np = np.asarray(surv_np, dtype=float)
+    time_grid = np.asarray(time_grid, dtype=float)
+    y = Surv.from_arrays(event=events.astype(bool), time=durations.astype(np.float32))
+
+    surv_df = pd.DataFrame(surv_np.T, index=time_grid)
+    antolini_c = float(
+        EvalSurv(surv_df, durations, events).concordance_td("adj_antolini")
+    )
+
+    auc_info = compute_time_dependent_auc(
+        surv_test_np=surv_np,
+        time_grid_train_np=time_grid,
+        y_train=y,
+        y_test=y,
+        eval_horizons=eval_horizons,
+    )
+    if len(auc_info["horizon_values"]) != 2:
+        raise ValueError(
+            "Expected exactly two AUC horizons for overall performance bootstrap."
+        )
+
+    ibs = float(
+        SurvivalEvaluator(
+            pred_survs=surv_np,
+            time_coordinates=time_grid,
+            test_event_times=durations,
+            test_event_indicators=events,
+            train_event_times=durations,
+            train_event_indicators=events,
+        ).integrated_brier_score()
+    )
+
+    metrics = {
+        C_INDEX: antolini_c,
+        AUC: float(auc_info["mean_auc"]),
+        "auc_at_1y": float(auc_info["horizon_values"][0]),
+        "auc_at_2y": float(auc_info["horizon_values"][1]),
+        "IBS": ibs,
+    }
+    resolved_horizons = {
+        "auc_at_1y": float(auc_info["horizon_times"][0]),
+        "auc_at_2y": float(auc_info["horizon_times"][1]),
+    }
+    return metrics, resolved_horizons
+
+
+def _summarize_bootstrap_scalar(
+    point_estimate: float,
+    values: Sequence[float],
+    alpha: float = OVERALL_PERFORMANCE_BOOTSTRAP_ALPHA,
+) -> BootstrapScalarMetricSummary:
+    arr = np.asarray(list(values), dtype=float)
+    arr = arr[np.isfinite(arr)]
+    if arr.size == 0:
+        return BootstrapScalarMetricSummary(
+            point_estimate=float(point_estimate),
+            ci_low=float("nan"),
+            ci_high=float("nan"),
+            bootstrap_mean=float("nan"),
+            bootstrap_sd=float("nan"),
+            values=[],
+        )
+    tail = (1.0 - float(alpha)) / 2.0
+    ci_low, ci_high = np.nanpercentile(arr, [100.0 * tail, 100.0 * (1.0 - tail)])
+    return BootstrapScalarMetricSummary(
+        point_estimate=float(point_estimate),
+        ci_low=float(ci_low),
+        ci_high=float(ci_high),
+        bootstrap_mean=float(np.nanmean(arr)),
+        bootstrap_sd=float(np.nanstd(arr, ddof=1)) if arr.size > 1 else 0.0,
+        values=[float(x) for x in arr],
+    )
+
+
+def build_bootstrap_overall_performance(
+    design_matrix: pd.DataFrame,
+    model_results_paths: Mapping[str, Sequence[Path]],
+    models: Sequence[str] = BASE_MODELS,
+    n_boot: int = OVERALL_PERFORMANCE_BOOTSTRAP_N,
+    alpha: float = OVERALL_PERFORMANCE_BOOTSTRAP_ALPHA,
+    random_state: int = RANDOM_STATE,
+) -> Dict[str, BootstrapModelStat]:
+    if int(n_boot) <= 0:
+        raise ValueError("n_boot must be positive.")
+
+    durations_all = pd.to_numeric(design_matrix[TIME_COL], errors="coerce").to_numpy(
+        dtype=float
+    )
+    events_all = pd.to_numeric(design_matrix[EVENT_COL], errors="coerce").to_numpy(
+        dtype=float
+    )
+    patient_id_series = design_matrix[PATIENT_ID_COL]
+    patient_ids_all = patient_id_series.astype(str).to_numpy()
+    out: Dict[str, BootstrapModelStat] = {}
+
+    for model_idx, model in enumerate(models):
+        surv_paths = [Path(p) / "surv_test.npz" for p in model_results_paths[model]]
+        target_time_grid = None
+        if model == "deephit":
+            target_time_grid = DEEPHIT_BOOTSTRAP_INTERP_GRID
+        surv_df, common_time = load_oof_surv_only(
+            design_matrix,
+            surv_paths,
+            target_time_grid=target_time_grid,
+        )
+        surv_np = surv_df.to_numpy(dtype=float)
+        valid = (
+            np.all(np.isfinite(surv_np), axis=1)
+            & np.isfinite(durations_all)
+            & np.isfinite(events_all)
+            & patient_id_series.notna().to_numpy(dtype=bool)
+        )
+        if not np.any(valid):
+            raise ValueError(f"No valid OOF rows found for model {model!r}.")
+
+        durations = durations_all[valid]
+        events = events_all[valid].astype(int)
+        surv_valid = surv_np[valid]
+        patient_ids = patient_ids_all[valid]
+
+        point_metrics, resolved_horizons = _evaluate_bootstrap_overall_metrics(
+            durations=durations,
+            events=events,
+            surv_np=surv_valid,
+            time_grid=common_time,
+        )
+        metric_samples: dict[str, list[float]] = {
+            metric_key: [] for _, metric_key, _ in _overall_performance_metric_rows()
+        }
+        patient_groups = _patient_bootstrap_groups(patient_ids)
+        rng = np.random.default_rng(int(random_state) + model_idx + 1)
+
+        for _ in range(int(n_boot)):
+            sampled = rng.integers(0, len(patient_groups), size=len(patient_groups))
+            boot_idx = np.concatenate([patient_groups[i] for i in sampled])
+            try:
+                boot_metrics, _ = _evaluate_bootstrap_overall_metrics(
+                    durations=durations[boot_idx],
+                    events=events[boot_idx],
+                    surv_np=surv_valid[boot_idx],
+                    time_grid=common_time,
+                )
+            except Exception:
+                continue
+            for metric_key in metric_samples:
+                metric_samples[metric_key].append(float(boot_metrics[metric_key]))
+
+        out[model] = BootstrapModelStat(
+            name=model,
+            scalars={
+                metric_key: _summarize_bootstrap_scalar(
+                    point_estimate=float(point_metrics[metric_key]),
+                    values=metric_samples[metric_key],
+                    alpha=alpha,
+                )
+                for _, metric_key, _ in _overall_performance_metric_rows()
+            },
+            resolved_horizons=resolved_horizons,
+        )
+
+    return out
+
+
+def print_formatted_bootstrap_model_stats(
+    bootstrap_perf: Mapping[str, BootstrapModelStat],
+    row_order: Sequence[str] | None = None,
+    point_decimals: int = 3,
+    ci_decimals: int = 3,
+) -> None:
+    models = list(row_order) if row_order is not None else list(bootstrap_perf.keys())
+
+    def _fmt(
+        point_estimate: float,
+        ci_low: float,
+        ci_high: float,
+        bold: bool,
+    ) -> str:
+        inner = (
+            f"{point_estimate:.{point_decimals}f}"
+            f" ({ci_low:.{ci_decimals}f}, {ci_high:.{ci_decimals}f})"
+        )
+        return f"$\\mathbf{{{inner}}}$" if bold else f"${inner}$"
+
+    for idx, (label, metric_key, lower_is_better) in enumerate(
+        _overall_performance_metric_rows()
+    ):
+        point_estimates: list[float] = []
+        summaries: list[BootstrapScalarMetricSummary] = []
+        for model in models:
+            stat = bootstrap_perf[model].scalars.get(metric_key)
+            if stat is None:
+                raise KeyError(f"Missing metric {metric_key!r} for model {model!r}")
+            point_estimates.append(float(stat.point_estimate))
+            summaries.append(stat)
+
+        arr = np.asarray(point_estimates, dtype=float)
+        best_idx = int(np.nanargmin(arr) if lower_is_better else np.nanargmax(arr))
+        cells = [
+            _fmt(
+                point_estimate=summary.point_estimate,
+                ci_low=summary.ci_low,
+                ci_high=summary.ci_high,
+                bold=(j == best_idx),
+            )
+            for j, summary in enumerate(summaries)
+        ]
+        prefix = f"{label} & " if idx == 0 else f"    & {label} & "
+        print(prefix + " & ".join(cells) + r" \\")
 
 
 def _bootstrap_subtype_metrics(
@@ -992,7 +1338,7 @@ def build_model_perf(
         _add_scalar("auc_at_2y", auc2y)
 
         series: Dict[str, TimeMetricSeries] = {}
-        for metric_key in ("auc", "ipcw"):
+        for metric_key in ("auc", "ipcw", "brier_score"):
             ts = _build_time_series_from_folds(folds, metric_key)
             if ts:
                 series[metric_key] = ts
@@ -1007,18 +1353,24 @@ def build_model_perf(
     return model_perf, model_results_paths
 
 
-def load_oof_surv_only(dm, surv_paths):
+def load_oof_surv_only(dm, surv_paths, target_time_grid: np.ndarray | None = None):
     # --- build common time grid ---
-    time_list = []
-    for p in surv_paths:
-        with np.load(p) as f:
-            t = np.asarray(f["time"], dtype=float)
-        time_list.append(np.unique(t))
-    common_time = time_list[0]
-    for t in time_list[1:]:
-        common_time = np.intersect1d(common_time, t, assume_unique=True)
-    if common_time.size == 0:
-        raise ValueError("No overlapping time points across folds.")
+    if target_time_grid is None:
+        time_list = []
+        for p in surv_paths:
+            with np.load(p) as f:
+                t = np.asarray(f["time"], dtype=float)
+            time_list.append(np.unique(t))
+        common_time = time_list[0]
+        for t in time_list[1:]:
+            common_time = np.intersect1d(common_time, t, assume_unique=True)
+        if common_time.size == 0:
+            raise ValueError("No overlapping time points across folds.")
+    else:
+        common_time = np.asarray(target_time_grid, dtype=float).reshape(-1)
+        if common_time.size == 0:
+            raise ValueError("target_time_grid must be non-empty.")
+        common_time = np.unique(common_time)
 
     # --- initialize arrays ---
     n = len(dm)
@@ -1030,11 +1382,18 @@ def load_oof_surv_only(dm, surv_paths):
             idx_test = np.asarray(sf["idx_test"], dtype=int)
             time_grid = np.asarray(sf["time"], dtype=float)
             surv_vals = np.asarray(sf["surv"], dtype=float)
-            # align columns to the common grid
-            col_idx = np.searchsorted(time_grid, common_time)
-            if not np.allclose(time_grid[col_idx], common_time):
-                raise ValueError(f"Time grid mismatch in {surv_path}")
-            surv_oof[idx_test] = surv_vals[:, col_idx]
+            if target_time_grid is None:
+                # align columns to the common grid
+                col_idx = np.searchsorted(time_grid, common_time)
+                if not np.allclose(time_grid[col_idx], common_time):
+                    raise ValueError(f"Time grid mismatch in {surv_path}")
+                surv_oof[idx_test] = surv_vals[:, col_idx]
+            else:
+                surv_oof[idx_test] = _interp_survival_matrix_to_grid(
+                    time_grid=time_grid,
+                    surv_np=surv_vals,
+                    target_time_grid=common_time,
+                )
 
     # --- wrap as DataFrame for downstream use ---
     surv_df = pd.DataFrame(surv_oof, index=dm.index, columns=common_time)
@@ -1432,8 +1791,6 @@ def cohen_d_smd(high_df: pd.DataFrame, low_df: pd.DataFrame) -> pd.Series:
     return (mu1 - mu0) / pooled_sd.replace(0, np.nan)
 
 
-
-
 def _to_index(df: pd.DataFrame, sel: IndexLike) -> pd.Index:
     """
     Accepts either:
@@ -1547,8 +1904,6 @@ def group_feature_contrast(
     return cohen_d_smd(share_df.loc[high_idx], share_df.loc[low_idx])
 
 
-
-
 def pfs_event_prevalence_by_agebin(
     dm: pd.DataFrame,
     age_col: str = "AGE",
@@ -1565,6 +1920,7 @@ def pfs_event_prevalence_by_agebin(
     df[age_col] = pd.to_numeric(df[age_col], errors="coerce")
     df[event_col] = pd.to_numeric(df[event_col], errors="coerce")
     df = df.dropna(subset=[age_col, event_col])
+    df = df[df[event_col].isin([0, 1])]
 
     if df.empty:
         return pd.DataFrame(columns=["Age bin", "Event (%)", "n"])
@@ -1703,3 +2059,1371 @@ def print_hr_her2_by_age_midrule_block(
     print("\nChi-square tests (raw):")
     print(f"HR vs age group: chi2={chi2_hr}, dof={dof_hr}, p={p_hr}")
     print(f"HER2 vs age group: chi2={chi2_her2}, dof={dof_her2}, p={p_her2}")
+
+
+MANUSCRIPT_TIME_HORIZONS: tuple[int, ...] = (90, 180, 365, 730)
+MANUSCRIPT_RISK_TABLE_TIMES: tuple[int, ...] = (180, 365, 730)
+MANUSCRIPT_INTERMEDIATE_RISK_DAYS = 365
+MANUSCRIPT_PRIMARY_RISK_METHOD = "tertile"
+MANUSCRIPT_PRED_CI_METHOD = "quantile"
+MANUSCRIPT_BASELINE_CONTRAST_EXCLUDED_FEATURES: tuple[str, ...] = (
+    "IS_MLOT1",
+    "GENOMICS_MISSING",
+)
+MANUSCRIPT_WATERFALL_LEFT_IDX = 7228
+MANUSCRIPT_WATERFALL_RIGHT_IDX = 5128
+
+
+@dataclass
+class ManuscriptContext:
+    model: str = MODEL
+    results_root: Path = RESULTS_ROOT
+    output_dir: Path = OUTPUT_DIR
+
+    dm: pd.DataFrame = field(init=False)
+    no_rad_prior_df: pd.DataFrame = field(init=False)
+    model_perf_bundle: tuple[Dict[str, ModelStat], Dict[str, list[Path]]] = field(
+        init=False
+    )
+    model_perf: Dict[str, ModelStat] = field(init=False)
+    model_results_paths: Dict[str, list[Path]] = field(init=False)
+    overall_perf_bootstrap: Dict[str, BootstrapModelStat] | None = field(
+        init=False, default=None
+    )
+    oof_bundle: dict[str, Any] = field(init=False)
+    surv_oof: pd.DataFrame = field(init=False)
+    shap_oof: pd.DataFrame = field(init=False)
+    shap_x_oof: pd.DataFrame = field(init=False)
+    shap_expected_oof: pd.Series = field(init=False)
+    time_grid: np.ndarray = field(init=False)
+    features: list[str] = field(init=False)
+    feature_labels: dict[str, str] = field(init=False)
+    feature_group_rules: dict[str, Any] = field(init=False)
+    group_map: dict[str, str] = field(init=False)
+    shap_risk_oof: pd.DataFrame = field(init=False)
+    shap_expected_risk_oof: pd.Series = field(init=False)
+    risk_inputs: dict[str, Any] = field(init=False)
+    subtype_masks: dict[str, pd.Series] = field(init=False)
+    lot_masks: dict[str, pd.Series] = field(init=False)
+    late_start_bundle: dict[str, list[int]] = field(init=False)
+    leakage_bundle: dict[str, Any] = field(init=False)
+    age_ablation_bundle: dict[str, Any] = field(init=False)
+    age_ablation_less_regularized_bundle: dict[str, Any] = field(init=False)
+    modality_perf: dict[str, dict[str, Any]] = field(init=False)
+    selected_model_configs: pd.DataFrame = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.dm = pd.read_csv("data/design_matrix.csv")
+        dropped_lines = pd.read_csv("data/BREAST_dropped_pfs_lines.csv")
+        self.no_rad_prior_df = dropped_lines[
+            dropped_lines["LINE_SOURCE"] == "no_radiology_within_90_prior"
+        ].copy()
+
+        self.model_perf_bundle = build_model_perf(self.results_root, BASE_MODELS)
+        self.model_perf = self.model_perf_bundle[0]
+        self.model_results_paths = self.model_perf_bundle[1]
+
+        surv_paths = [p / "surv_test.npz" for p in self.model_results_paths[self.model]]
+        shap_paths = [
+            p / "shap_values.npz" for p in self.model_results_paths[self.model]
+        ]
+        (
+            self.surv_oof,
+            self.shap_oof,
+            self.shap_x_oof,
+            self.shap_expected_oof,
+            time_grid,
+            features,
+        ) = load_oof_surv_and_shap(
+            dm=self.dm,
+            surv_paths=surv_paths,
+            shap_paths=shap_paths,
+        )
+        self.time_grid = np.asarray(time_grid, dtype=float)
+        self.features = list(features)
+        self.oof_bundle = {
+            "surv_oof": self.surv_oof,
+            "shap_oof": self.shap_oof,
+            "shap_x_oof": self.shap_x_oof,
+            "shap_expected_oof": self.shap_expected_oof,
+            "time_grid": self.time_grid,
+            "features": self.features,
+        }
+
+        self.feature_labels = json.load(open("data/feature_display_names.json"))
+        self.feature_group_rules = json.load(open("data/feature_groups.json"))
+        self.group_map = load_feature_group_map(
+            feature_names=self.features,
+            groups_path=Path("data/feature_groups.json"),
+        )
+        self.shap_risk_oof = -self.shap_oof
+        self.shap_expected_risk_oof = 1.0 - self.shap_expected_oof
+
+        resolved_indices = [
+            int(np.argmin(np.abs(self.time_grid - day)))
+            for day in MANUSCRIPT_TIME_HORIZONS
+        ]
+        resolved_times = [float(self.time_grid[idx]) for idx in resolved_indices]
+        resolved_times_int = [int(np.rint(t)) for t in resolved_times]
+        intermediate_risk_index = int(
+            np.argmin(np.abs(self.time_grid - MANUSCRIPT_INTERMEDIATE_RISK_DAYS))
+        )
+        intermediate_risk_day = float(self.time_grid[intermediate_risk_index])
+        risk_scores = 1.0 - self.surv_oof.iloc[:, intermediate_risk_index]
+        risk_scores.name = f"progression_risk_{int(round(intermediate_risk_day))}d"
+        self.risk_inputs = {
+            "resolved_times": resolved_times,
+            "resolved_times_int": resolved_times_int,
+            "intermediate_risk_index": intermediate_risk_index,
+            "intermediate_risk_day": intermediate_risk_day,
+            "risk_scores": risk_scores,
+            "strata_indices": build_method_strata_indices(
+                MANUSCRIPT_PRIMARY_RISK_METHOD,
+                scores=risk_scores,
+            ),
+        }
+
+        self.subtype_masks = {
+            "HR-/HER2-": (self.dm["HR"] == 0) & (self.dm["HER2"] == 0),
+            "HR-/HER2+": (self.dm["HR"] == 0) & (self.dm["HER2"] == 1),
+            "HR+/HER2-": (self.dm["HR"] == 1) & (self.dm["HER2"] == 0),
+            "HR+/HER2+": (self.dm["HR"] == 1) & (self.dm["HER2"] == 1),
+        }
+        self.lot_masks = {
+            "mLoT1": self.dm["LINE"] == 1,
+            "mLoT2+": self.dm["LINE"] > 1,
+        }
+        self.late_start_bundle = compute_late_start_agent_indices(self.dm)
+        self.leakage_bundle = self._build_leakage_bundle()
+        self.age_ablation_bundle = self._build_age_ablation_bundle()
+        self.age_ablation_less_regularized_bundle = (
+            self._build_age_ablation_less_regularized_bundle()
+        )
+        self.modality_perf = self._build_modality_perf()
+        self.selected_model_configs = self._build_selected_model_configs()
+
+    def _build_leakage_bundle(self) -> dict[str, Any]:
+        metrics_for_comparison: tuple[str, ...] = (
+            C_INDEX,
+            AUC,
+            "IBS",
+            "auc_at_1y",
+            "auc_at_2y",
+        )
+        metric_alternatives = {
+            C_INDEX: "greater",
+            AUC: "greater",
+            "auc_at_1y": "greater",
+            "auc_at_2y": "greater",
+            "IBS": "less",
+        }
+        leakage_root = Path("leakage")
+        model_perf, model_results_paths = build_model_perf(leakage_root, BASE_MODELS)
+        paired = paired_tests_summary(
+            self.model_perf,
+            model_perf,
+            models=BASE_MODELS,
+            metrics=metrics_for_comparison,
+            alternative="greater",
+            metric_alternatives=metric_alternatives,
+        )
+        delta_table = delta_table_from_paired(
+            paired,
+            metrics=(C_INDEX, AUC, "IBS"),
+        )
+        surv_paths = [p / "surv_test.npz" for p in model_results_paths[self.model]]
+        surv_leakage_df, leakage_time_grid = load_oof_surv_only(self.dm, surv_paths)
+        if not np.allclose(self.time_grid, leakage_time_grid):
+            raise ValueError(
+                "Leakage OOF time grid does not match base-model time grid."
+            )
+        return {
+            "model_perf": model_perf,
+            "model_results_paths": model_results_paths,
+            "paired": paired,
+            "delta_table": delta_table,
+            "surv_leakage_df": surv_leakage_df,
+            "time_grid": leakage_time_grid,
+        }
+
+    def _build_age_ablation_bundle(self) -> dict[str, Any]:
+        metrics_for_comparison: tuple[str, ...] = (
+            C_INDEX,
+            AUC,
+            "IBS",
+            "auc_at_1y",
+            "auc_at_2y",
+        )
+        metric_two_sided = {
+            C_INDEX: "two-sided",
+            AUC: "two-sided",
+            "auc_at_1y": "two-sided",
+            "auc_at_2y": "two-sided",
+            "IBS": "two-sided",
+        }
+        metric_worse = {
+            C_INDEX: "less",
+            AUC: "less",
+            "auc_at_1y": "less",
+            "auc_at_2y": "less",
+            "IBS": "greater",
+        }
+        age_ablation_root = Path("results_ablation/drop_age")
+        model_perf, model_results_paths = build_model_perf(
+            age_ablation_root, BASE_MODELS
+        )
+        paired = paired_tests_summary(
+            self.model_perf,
+            model_perf,
+            models=BASE_MODELS,
+            metrics=metrics_for_comparison,
+            alternative="two-sided",
+            metric_alternatives=metric_two_sided,
+        )
+        paired_worse = paired_tests_summary(
+            self.model_perf,
+            model_perf,
+            models=BASE_MODELS,
+            metrics=metrics_for_comparison,
+            alternative="less",
+            metric_alternatives=metric_worse,
+        )
+        delta_table_worse = delta_table_from_paired(
+            paired_worse,
+            metrics=(C_INDEX, AUC, "IBS"),
+        )
+        return {
+            "model_perf": model_perf,
+            "model_results_paths": model_results_paths,
+            "paired": paired,
+            "paired_worse": paired_worse,
+            "delta_table_worse": delta_table_worse,
+        }
+
+    def _build_age_ablation_less_regularized_bundle(self) -> dict[str, Any]:
+        metrics_for_comparison: tuple[str, ...] = (
+            C_INDEX,
+            AUC,
+            "IBS",
+            "auc_at_1y",
+            "auc_at_2y",
+        )
+        metric_worse = {
+            C_INDEX: "less",
+            AUC: "less",
+            "auc_at_1y": "less",
+            "auc_at_2y": "less",
+            "IBS": "greater",
+        }
+        root = Path("results_ablation/drop_age_less_regularized")
+        models = [
+            model
+            for model in BASE_MODELS
+            if (root / model / "eval_metrics.json").exists()
+        ]
+        model_perf, model_results_paths = build_model_perf(root, models)
+        paired_worse = paired_tests_summary(
+            self.model_perf,
+            model_perf,
+            models=models,
+            metrics=metrics_for_comparison,
+            alternative="less",
+            metric_alternatives=metric_worse,
+        )
+        delta_table = delta_table_from_paired(
+            paired_worse,
+            metrics=(C_INDEX, AUC, "IBS"),
+        )
+        p_signflip = (
+            paired_worse[paired_worse["metric"].isin((AUC, "IBS"))]
+            .pivot(index="model", columns="metric", values="p_signflip")
+            .rename(columns={AUC: "p_signflip_AUC", "IBS": "p_signflip_IBS"})
+            .reset_index()
+        )
+        return {
+            "models": models,
+            "model_perf": model_perf,
+            "model_results_paths": model_results_paths,
+            "paired_worse": paired_worse,
+            "delta_table": delta_table,
+            "p_signflip": p_signflip,
+        }
+
+    def _build_modality_perf(self) -> dict[str, dict[str, Any]]:
+        modality_perf: dict[str, dict[str, Any]] = {}
+        for modality in MODALITY_GROUPS.keys():
+            modality_perf[modality] = {}
+            for ablation_type in ("only", "exclude"):
+                root = Path("results_ablation") / f"{ablation_type}_{modality}"
+                models = [
+                    model
+                    for model in BASE_MODELS
+                    if (root / model / "eval_metrics.json").exists()
+                ]
+                if not models:
+                    continue
+                model_perf, _ = build_model_perf(root, models)
+                entry: dict[str, Any] = dict(model_perf)
+                entry["best_model"] = max(
+                    model_perf.items(),
+                    key=lambda item: (
+                        round(item[1].scalars[C_INDEX].mean, 3),
+                        item[1].scalars[AUC].mean,
+                    ),
+                )[0]
+                modality_perf[modality][ablation_type] = entry
+        return modality_perf
+
+    def _build_selected_model_configs(self) -> pd.DataFrame:
+        rows = []
+        for model in BASE_MODELS:
+            counts = Counter(path.name for path in self.model_results_paths[model])
+            formatted = " | ".join(
+                f"{config} ({count})"
+                for config, count in sorted(
+                    counts.items(),
+                    key=lambda item: (-item[1], item[0]),
+                )
+            )
+            rows.append(
+                {
+                    "Model": DEFAULT_MODEL_NAME_MAP.get(model, model.upper()),
+                    "Selected configurations (count)": formatted,
+                }
+            )
+        return pd.DataFrame(rows)
+
+
+def emit_placeholder(reason: str) -> None:
+    print(f"[placeholder] {reason}")
+
+
+def print_markdown_table(df: pd.DataFrame, *, showindex: bool = False) -> None:
+    if df.empty:
+        print("(no rows)")
+        return
+    print(tabulate(df, headers="keys", tablefmt="github", showindex=showindex))
+
+
+def print_stratum_mae_table(summary_df: pd.DataFrame) -> None:
+    if "mae_pred_vs_km" not in summary_df.columns:
+        print("MAE summary unavailable.")
+        return
+    mae_df = summary_df[["stratum", "mae_pred_vs_km"]].copy()
+    mae_df = mae_df.rename(
+        columns={
+            "stratum": "Stratum",
+            "mae_pred_vs_km": "MAE (mean prediction vs KM)",
+        }
+    )
+    mae_df["MAE (mean prediction vs KM)"] = mae_df["MAE (mean prediction vs KM)"].map(
+        lambda value: f"{float(value):.3f}" if np.isfinite(value) else "nan"
+    )
+    print("Stratum MAE:")
+    print_markdown_table(mae_df)
+
+
+def print_time_grid_resolution_note(
+    time_grid: np.ndarray,
+    requested_horizons: Sequence[int] = MANUSCRIPT_TIME_HORIZONS,
+) -> None:
+    resolved_indices = [
+        int(np.argmin(np.abs(np.asarray(time_grid, dtype=float) - day)))
+        for day in requested_horizons
+    ]
+    resolved_times_int = [
+        int(np.rint(float(np.asarray(time_grid, dtype=float)[idx])))
+        for idx in resolved_indices
+    ]
+    if list(requested_horizons) != resolved_times_int:
+        print(
+            "Nearest-grid evaluation note: "
+            f"requested horizons {list(requested_horizons)} resolve to {resolved_times_int}."
+        )
+
+
+def summarize_hr_her2_group(group_df: pd.DataFrame) -> pd.Series:
+    median, median_low, median_high = median_pfs_ci(
+        group_df["PFS_TIME_DAYS"], group_df["PFS_EVENT"]
+    )
+    group_l1 = group_df[group_df["LINE"] == 1]
+    l1_median, l1_low, l1_high = median_pfs_ci(
+        group_l1["PFS_TIME_DAYS"], group_l1["PFS_EVENT"]
+    )
+    return pd.Series(
+        {
+            "Patients": int(group_df["PATIENT_ID"].nunique()),
+            "Total mLoTs": int(group_df["LINE"].count()),
+            "Avg mLoTs": float(
+                group_df["LINE"].count() / group_df["PATIENT_ID"].nunique()
+            ),
+            "Event rate (%)": float(np.mean(group_df["PFS_EVENT"] == 1) * 100),
+            "Median PFS": format_median_ci(median, median_low, median_high, digits=0),
+            "mLoT1 patients": int(group_l1["PATIENT_ID"].nunique()),
+            "mLoT1 event rate (%)": float(np.mean(group_l1["PFS_EVENT"] == 1) * 100),
+            "mLoT1 median PFS": format_median_ci(l1_median, l1_low, l1_high, digits=0),
+        }
+    )
+
+
+def build_cohort_summary_table(dm: pd.DataFrame) -> pd.DataFrame:
+    rows = [{"Cohort": "Overall", **summarize_hr_her2_group(dm).to_dict()}]
+    label_order = [
+        ((0, 0), "HR-/HER2-"),
+        ((0, 1), "HR-/HER2+"),
+        ((1, 0), "HR+/HER2-"),
+        ((1, 1), "HR+/HER2+"),
+    ]
+    for (hr, her2), label in label_order:
+        group_df = dm[(dm["HR"] == hr) & (dm["HER2"] == her2)]
+        rows.append({"Cohort": label, **summarize_hr_her2_group(group_df).to_dict()})
+    out = pd.DataFrame(rows)
+    for col in ("Avg mLoTs", "Event rate (%)", "mLoT1 event rate (%)"):
+        out[col] = out[col].map(lambda x: f"{float(x):.2f}")
+    return out
+
+
+def build_strata_indices_from_labels(strata: pd.Series) -> dict[str, list[int]]:
+    return {
+        label: strata[strata == label].index.to_list()
+        for label in ("low", "mid", "high")
+        if (strata == label).any()
+    }
+
+
+def build_method_strata_indices(
+    method_name: str,
+    scores: pd.Series,
+    subset_indices: Sequence[int] | None = None,
+) -> dict[str, list[int]]:
+    fit_scores = (
+        scores.loc[list(subset_indices)] if subset_indices is not None else scores
+    )
+
+    if method_name == "tertile":
+        strata = assign_tertiles(fit_scores)
+    elif method_name == "kmeans":
+        strata = assign_kmeans_strata(
+            fit_scores,
+            n_clusters=3,
+            random_state=RANDOM_STATE,
+        )
+    else:
+        raise KeyError(f"Unknown risk stratification method: {method_name}")
+
+    return build_strata_indices_from_labels(strata)
+
+
+def compute_late_start_agent_indices(dm: pd.DataFrame) -> dict[str, list[int]]:
+    planned_cols = [col for col in dm.columns if col.startswith("PLANNED_")]
+    planned_suffixes = [col.replace("PLANNED_", "") for col in planned_cols]
+    received_cols = [
+        col
+        for col in dm.columns
+        if col.startswith("RECEIVED_") and col != "RECEIVED_AGENT_IMMUNO_OTHER"
+    ]
+    received_suffixes = [col.replace("RECEIVED_", "") for col in received_cols]
+    if set(planned_suffixes) != set(received_suffixes):
+        raise ValueError("PLANNED_ and RECEIVED_ columns do not align.")
+
+    has_late_start_agent = (dm["RECEIVED_AGENT_IMMUNO_OTHER"] == 1).to_numpy(dtype=bool)
+    has_late_start_systemic_agent = has_late_start_agent.copy()
+
+    for suffix in planned_suffixes:
+        planned_col = f"PLANNED_{suffix}"
+        received_col = f"RECEIVED_{suffix}"
+        diff_mask = (dm[planned_col] != dm[received_col]).to_numpy(dtype=bool)
+        has_late_start_agent = has_late_start_agent | diff_mask
+        if not any(
+            token in suffix
+            for token in ("SURGERY", "RADIATION_THERAPY", "BONE TREATMENT")
+        ):
+            has_late_start_systemic_agent = has_late_start_systemic_agent | diff_mask
+
+    late_start_indices = np.where(has_late_start_agent)[0].tolist()
+    late_start_systemic_indices = np.where(has_late_start_systemic_agent)[0].tolist()
+    late_start_local_indices = sorted(
+        set(late_start_indices) - set(late_start_systemic_indices)
+    )
+    return {
+        "late_start_indices": late_start_indices,
+        "late_start_systemic_indices": late_start_systemic_indices,
+        "late_start_local_indices": late_start_local_indices,
+    }
+
+
+def build_modality_delta_df(
+    modality_perf: Mapping[str, Any],
+    baseline_stat: ModelStat,
+    ablation_type: str,
+) -> pd.DataFrame:
+    rows = []
+    baseline_c = float(baseline_stat.scalars[C_INDEX].mean)
+    baseline_auc = float(baseline_stat.scalars[AUC].mean)
+    for modality in sorted(modality_perf.keys()):
+        entry = modality_perf[modality].get(ablation_type)
+        if not entry:
+            continue
+        best_model = entry["best_model"]
+        stats = entry[best_model]
+        c_mean = float(stats.scalars[C_INDEX].mean)
+        auc_mean = float(stats.scalars[AUC].mean)
+        rows.append(
+            {
+                "Modality": modality,
+                "Best model": DEFAULT_MODEL_NAME_MAP.get(
+                    best_model, best_model.upper()
+                ),
+                "C-index": f"{c_mean:.3f}",
+                "ΔC": f"{c_mean - baseline_c:+.3f}",
+                "Mean AUC": f"{auc_mean:.3f}",
+                "ΔAUC": f"{auc_mean - baseline_auc:+.3f}",
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def build_mean_abs_shap_df(
+    shap_df: pd.DataFrame,
+    label_map: Mapping[str, str] | None,
+    top_k: int,
+) -> pd.DataFrame:
+    mean_abs = shap_df.abs().mean(axis=0).sort_values(ascending=False).head(top_k)
+    return pd.DataFrame(
+        {
+            "Feature": [
+                label_map.get(name, name) if label_map else name
+                for name in mean_abs.index
+            ],
+            "Mean |SHAP|": [f"{float(value):.4f}" for value in mean_abs.to_numpy()],
+        }
+    )
+
+
+def build_single_sample_shap_df(
+    shap_values: pd.Series,
+    feature_values: pd.Series,
+    label_map: Mapping[str, str] | None,
+    top_k: int,
+) -> pd.DataFrame:
+    order = shap_values.abs().sort_values(ascending=False).head(top_k).index
+    rows = []
+    for name in order:
+        rows.append(
+            {
+                "Feature": label_map.get(name, name) if label_map else name,
+                "Feature value": f"{float(feature_values.loc[name]):.4g}",
+                "SHAP risk contribution": f"{float(shap_values.loc[name]):+.4f}",
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def split_artifacts(
+    series: pd.Series,
+    threshold: float = 5.0,
+) -> tuple[pd.Series, pd.Series]:
+    if series.empty:
+        return series, series
+    artifact_mask = series.abs() > threshold
+    return series[~artifact_mask], series[artifact_mask]
+
+
+def split_excluded_features(
+    series: pd.Series,
+    excluded_features: Sequence[str],
+) -> tuple[pd.Series, pd.Series]:
+    if series.empty:
+        return series, series
+    excluded = series.reindex(list(excluded_features)).dropna()
+    remaining = series.drop(index=excluded.index, errors="ignore")
+    return remaining, excluded
+
+
+def build_ranked_series_df(
+    series: pd.Series,
+    label_map: Mapping[str, str] | None,
+    *,
+    top_k: int = 5,
+    column_name: str = "Feature",
+    value_name: str = "Value",
+) -> pd.DataFrame:
+    ordered = series.reindex(series.abs().sort_values(ascending=False).index).head(
+        top_k
+    )
+    return pd.DataFrame(
+        {
+            column_name: [
+                label_map.get(name, name) if label_map else name
+                for name in ordered.index
+            ],
+            value_name: [f"{float(value):+.3f}" for value in ordered.to_numpy()],
+        }
+    )
+
+
+def align_mask(mask: pd.Series | np.ndarray, target_index: pd.Index) -> np.ndarray:
+    if isinstance(mask, pd.Series):
+        return mask.reindex(target_index).fillna(False).to_numpy(dtype=bool)
+    return np.asarray(mask, dtype=bool)
+
+
+def build_contrast_cohort_defs(
+    ctx: ManuscriptContext,
+) -> list[tuple[str, np.ndarray, np.ndarray, np.ndarray]]:
+    line_values = pd.to_numeric(
+        ctx.dm.loc[ctx.shap_x_oof.index, "LINE"], errors="coerce"
+    )
+    mlot1_mask = (line_values == 1).to_numpy(dtype=bool)
+    mlot2plus_mask = (line_values > 1).to_numpy(dtype=bool)
+    cohort_defs = [
+        ("HR-/HER2-", align_mask(ctx.subtype_masks["HR-/HER2-"], ctx.shap_x_oof.index)),
+        ("HR-/HER2+", align_mask(ctx.subtype_masks["HR-/HER2+"], ctx.shap_x_oof.index)),
+        ("HR+/HER2-", align_mask(ctx.subtype_masks["HR+/HER2-"], ctx.shap_x_oof.index)),
+        ("HR+/HER2+", align_mask(ctx.subtype_masks["HR+/HER2+"], ctx.shap_x_oof.index)),
+        ("mLoT1", mlot1_mask),
+        ("mLoT2+", mlot2plus_mask),
+    ]
+    cohort_contrasts: list[tuple[str, np.ndarray, np.ndarray, np.ndarray]] = []
+    for cohort_name, cohort_mask in cohort_defs:
+        cohort_indices = ctx.shap_x_oof.index[cohort_mask].tolist()
+        cohort_strata_indices = build_method_strata_indices(
+            MANUSCRIPT_PRIMARY_RISK_METHOD,
+            scores=ctx.risk_inputs["risk_scores"],
+            subset_indices=cohort_indices,
+        )
+        high_sel = ctx.shap_x_oof.index.isin(cohort_strata_indices["high"])
+        low_sel = ctx.shap_x_oof.index.isin(cohort_strata_indices["low"])
+        cohort_contrasts.append((cohort_name, cohort_mask, high_sel, low_sel))
+    return cohort_contrasts
+
+
+def build_subgroup_horizon_df(
+    subgroup_series: Mapping[str, TimeMetricSeries],
+    horizons: Sequence[int] = MANUSCRIPT_TIME_HORIZONS,
+) -> pd.DataFrame:
+    rows = []
+    for subgroup_label in SUBTYPE_ORDER:
+        subgroup_key = subgroup_label
+        if subgroup_key not in subgroup_series:
+            subgroup_key = subgroup_label.replace("/", "_")
+        if subgroup_key not in subgroup_series:
+            continue
+        ts = subgroup_series[subgroup_key]
+        row = {"Subtype": subgroup_label}
+        for horizon in horizons:
+            idx = _resolve_time_index(ts.times, horizon)
+            row[f"{horizon}d"] = f"{float(ts.mean[idx]):.3f} ± {float(ts.std[idx]):.3f}"
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def summarize_group_rows(
+    dm: pd.DataFrame,
+    indices: Sequence[int],
+    *,
+    label: str,
+    time_col: str = TIME_COL,
+    event_col: str = EVENT_COL,
+) -> dict[str, str]:
+    group_df = dm.iloc[list(indices)]
+    median, low, high = median_pfs_ci(group_df[time_col], group_df[event_col])
+    return {
+        "Group": label,
+        "mLoTs": f"{group_df.shape[0]}",
+        "Patients": f"{group_df['PATIENT_ID'].nunique()}",
+        "Event rate (%)": f"{float(np.mean(group_df[event_col] == 1) * 100):.2f}",
+        "Median PFS": format_median_ci(median, low, high, digits=0),
+    }
+
+
+def emit_table_cohort_summary(ctx: ManuscriptContext) -> None:
+    print_markdown_table(build_cohort_summary_table(ctx.dm))
+    print("\nmLoT1 top 2 treatment-category combinations by subtype:")
+    treatment_combinations_to_latex_rows(
+        ctx.dm[ctx.dm["LINE"] == 1].copy(),
+        "TREATMENT",
+        top_k=2,
+        csv_path=False,
+    )
+
+
+def emit_fig_perf_and_risk(ctx: ManuscriptContext) -> None:
+    model_performance_dir = ctx.output_dir / "model_performance"
+    model_performance_dir.mkdir(parents=True, exist_ok=True)
+    risk_output_dir = ctx.output_dir / "risk"
+    risk_output_dir.mkdir(parents=True, exist_ok=True)
+
+    for metric, y_limits in zip(["ipcw", "auc"], [(0.61, 0.75), (0.65, 0.95)]):
+        series_data = {
+            model: ctx.model_perf[model].series[metric]
+            for model in BASE_MODELS
+            if model in ctx.model_perf and metric in ctx.model_perf[model].series
+        }
+        if not series_data:
+            continue
+        time_points = next(iter(series_data.values())).times
+        plot_full_group_individual_time_curves(
+            models=list(series_data.keys()),
+            metric=metric,
+            time_points=time_points,
+            max_time_days=ADMIN_CENSOR_DAYS,
+            shade="std",
+            shade_alpha=0.18,
+            y_min_auc_ipcw=0.0,
+            y_limits={},
+            title=f"Time-dependent {metric.upper()}",
+            figsize=(9.0, 6.0),
+            dpi=800,
+            output_path=model_performance_dir / f"td_{metric}_full.png",
+            series=series_data,
+            model_name_map=DEFAULT_MODEL_NAME_MAP,
+        )
+
+    print("subfigure: fig:time-dependent-perf")
+    print_time_grid_resolution_note(ctx.time_grid)
+    print_time_dependent_auc_and_c(ctx.model_perf)
+
+    print("\nsubfigure: fig:risk-strat")
+    _, risk_summary, _ = plot_tertile_stratified_survival_and_km(
+        time_grid=ctx.time_grid,
+        surv_np=ctx.surv_oof,
+        design_matrix=ctx.dm,
+        output_path=risk_output_dir / "tertile_stratified_survival_and_km.png",
+        strata_indices=ctx.risk_inputs["strata_indices"],
+        risk_scores=ctx.risk_inputs["risk_scores"],
+        horizon_day=ctx.risk_inputs["intermediate_risk_day"],
+        rmst_tau=ctx.risk_inputs["intermediate_risk_day"],
+        rmst_taus=MANUSCRIPT_RISK_TABLE_TIMES,
+        risk_table_times=MANUSCRIPT_RISK_TABLE_TIMES,
+        n_boot=400,
+        random_state=RANDOM_STATE,
+        cohort_label="population",
+        pred_ci_method=MANUSCRIPT_PRED_CI_METHOD,
+    )
+    print("\nPopulation tertile summary:")
+    print(risk_summary.to_string(index=False))
+    print_stratum_mae_table(risk_summary)
+    _, population_metrics = plot_population_km_vs_mean(
+        time_grid=ctx.time_grid,
+        surv_np=ctx.surv_oof,
+        indices=np.arange(ctx.surv_oof.shape[0], dtype=int),
+        durations=ctx.dm[TIME_COL],
+        events=ctx.dm[EVENT_COL],
+        output_path=risk_output_dir / "population_km_vs_mean.png",
+        title="Population Kaplan-Meier vs mean prediction",
+        figsize=(8.5, 5.2),
+        dpi=800,
+    )
+    mae_val = population_metrics.get("mae", float("nan"))
+    if np.isfinite(mae_val):
+        print(f"Population MAE (mean prediction vs KM): {mae_val:.3f}")
+
+
+def emit_table_overall_performance(ctx: ManuscriptContext) -> None:
+    print_formatted_model_stats(ctx.model_perf, row_order=BASE_MODELS)
+
+
+def emit_table_overall_performance_bootstrap_ci(
+    ctx: ManuscriptContext,
+    n_boot: int = OVERALL_PERFORMANCE_BOOTSTRAP_N,
+    alpha: float = OVERALL_PERFORMANCE_BOOTSTRAP_ALPHA,
+) -> None:
+    if ctx.overall_perf_bootstrap is None:
+        ctx.overall_perf_bootstrap = build_bootstrap_overall_performance(
+            design_matrix=ctx.dm,
+            model_results_paths=ctx.model_results_paths,
+            models=BASE_MODELS,
+            n_boot=n_boot,
+            alpha=alpha,
+            random_state=RANDOM_STATE,
+        )
+    print_formatted_bootstrap_model_stats(
+        ctx.overall_perf_bootstrap, row_order=BASE_MODELS
+    )
+
+
+def emit_fig_stratify_by_subtype(ctx: ManuscriptContext) -> None:
+    risk_output_dir = ctx.output_dir / "risk"
+    risk_output_dir.mkdir(parents=True, exist_ok=True)
+    local_risk_method = "tertile"
+    subtype_outputs: dict[str, dict[str, object]] = {}
+
+    for subtype in SUBTYPE_ORDER:
+        mask = ctx.subtype_masks[subtype]
+        subtype_indices = ctx.dm.index[mask].tolist()
+        if not subtype_indices:
+            raise ValueError(f"No patients found for subtype {subtype}.")
+        subtype_strata_indices = build_method_strata_indices(
+            local_risk_method,
+            scores=ctx.risk_inputs["risk_scores"],
+            subset_indices=subtype_indices,
+        )
+        safe_label = (
+            subtype.lower().replace("/", "_").replace("+", "pos").replace("-", "neg")
+        )
+        print(subtype)
+        _, subtype_summary, subtype_details = plot_tertile_stratified_survival_and_km(
+            time_grid=ctx.time_grid,
+            surv_np=ctx.surv_oof,
+            design_matrix=ctx.dm,
+            output_path=risk_output_dir / f"tertile_stratified_{safe_label}.png",
+            strata_indices=subtype_strata_indices,
+            risk_scores=ctx.risk_inputs["risk_scores"],
+            subset_indices=subtype_indices,
+            horizon_day=ctx.risk_inputs["intermediate_risk_day"],
+            rmst_tau=ctx.risk_inputs["intermediate_risk_day"],
+            rmst_taus=MANUSCRIPT_RISK_TABLE_TIMES,
+            risk_table_times=MANUSCRIPT_RISK_TABLE_TIMES,
+            n_boot=400,
+            random_state=RANDOM_STATE,
+            cohort_label=f"{subtype} (local tertiles)",
+            show_table=True,
+            pred_ci_method=MANUSCRIPT_PRED_CI_METHOD,
+        )
+        print(subtype_summary.to_string(index=False))
+        print_stratum_mae_table(subtype_summary)
+        subtype_outputs[subtype] = {
+            "summary": subtype_summary,
+            "details": subtype_details,
+            "indices": subtype_indices,
+        }
+        print()
+
+    for lot_label, mask in ctx.lot_masks.items():
+        lot_indices = ctx.dm.index[mask].tolist()
+        if not lot_indices:
+            raise ValueError(f"No patients found for lot {lot_label}.")
+        lot_strata_indices = build_method_strata_indices(
+            local_risk_method,
+            scores=ctx.risk_inputs["risk_scores"],
+            subset_indices=lot_indices,
+        )
+        lot_safe_label = lot_label.lower().replace("+", "plus")
+        print(lot_label)
+        _, lot_summary, _ = plot_tertile_stratified_survival_and_km(
+            time_grid=ctx.time_grid,
+            surv_np=ctx.surv_oof,
+            design_matrix=ctx.dm,
+            output_path=risk_output_dir / f"tertile_stratified_{lot_safe_label}.png",
+            strata_indices=lot_strata_indices,
+            risk_scores=ctx.risk_inputs["risk_scores"],
+            subset_indices=lot_indices,
+            horizon_day=ctx.risk_inputs["intermediate_risk_day"],
+            rmst_tau=ctx.risk_inputs["intermediate_risk_day"],
+            rmst_taus=MANUSCRIPT_RISK_TABLE_TIMES,
+            risk_table_times=MANUSCRIPT_RISK_TABLE_TIMES,
+            n_boot=400,
+            random_state=RANDOM_STATE,
+            cohort_label=f"{lot_label} (local tertiles)",
+            show_table=True,
+            pred_ci_method=MANUSCRIPT_PRED_CI_METHOD,
+        )
+        print(lot_summary.to_string(index=False))
+        print_stratum_mae_table(lot_summary)
+        print()
+
+    # subtype_summary_df, pairwise_df, corr_stats = summarize_subtype_calibration(
+    #     subtype_outputs=subtype_outputs,
+    #     design_matrix=ctx.dm,
+    #     surv_np=np.asarray(ctx.surv_oof, dtype=float),
+    #     time_grid=np.asarray(ctx.time_grid, dtype=float),
+    #     rmst_tau=float(MANUSCRIPT_INTERMEDIATE_RISK_DAYS),
+    #     n_boot=400,
+    #     random_state=RANDOM_STATE,
+    #     subtype_order=SUBTYPE_ORDER,
+    # )
+    # print("Local subtype calibration summary (MAE + RMST delta):")
+    # print(subtype_summary_df.to_string(index=False))
+    # if not pairwise_df.empty:
+    #     print("\nPairwise local subtype calibration differences:")
+    #     print(pairwise_df.to_string(index=False))
+    # if corr_stats:
+    #     for key in ("n_lines", "n_patients"):
+    #         stats_row = corr_stats.get(key, {})
+    #         print(
+    #             f"{key} vs MAE Spearman rho={stats_row.get('rho', float('nan')):.3f}, "
+    #             f"p={stats_row.get('p', float('nan')):.3g}"
+    #         )
+
+
+def emit_fig_shap_compact(ctx: ManuscriptContext) -> None:
+    shap_dir = ctx.output_dir / "feature_importance"
+    shap_dir.mkdir(parents=True, exist_ok=True)
+
+    plot_shap_summary_from_arrays(
+        shap_values=ctx.shap_risk_oof,
+        X=ctx.shap_x_oof,
+        feature_names=ctx.features,
+        label_map=ctx.feature_labels,
+        top_k=12,
+        title="Top 12 SHAP features",
+        figsize=(9.0, 5.0),
+        dpi=800,
+        output_path=shap_dir / "shap_individual.png",
+    )
+    print("subfigure: fig:shap-individual")
+    print_markdown_table(
+        build_mean_abs_shap_df(ctx.shap_risk_oof, ctx.feature_labels, top_k=12)
+    )
+
+    for label, row_idx, max_display in (
+        ("fig:patient-example-0", MANUSCRIPT_WATERFALL_LEFT_IDX, 8),
+        ("fig:patient-example-1", MANUSCRIPT_WATERFALL_RIGHT_IDX, 7),
+    ):
+        output_name = (
+            "waterfall_left.png"
+            if row_idx == MANUSCRIPT_WATERFALL_LEFT_IDX
+            else "waterfall_right.png"
+        )
+        plot_single_sample_shap_waterfall_from_arrays(
+            shap_values=ctx.shap_risk_oof.loc[row_idx].to_numpy(),
+            X=ctx.shap_x_oof.loc[row_idx].to_numpy(),
+            expected_value=float(ctx.shap_expected_risk_oof.loc[row_idx]),
+            feature_names=ctx.features,
+            label_map=ctx.feature_labels,
+            title=label,
+            max_display=max_display,
+            figsize=(9.0, 6.0),
+            dpi=800,
+            output_path=shap_dir / output_name,
+        )
+        predicted_risk = float(
+            ctx.shap_expected_risk_oof.loc[row_idx]
+            + ctx.shap_risk_oof.loc[row_idx].sum()
+        )
+        print(f"\nsubfigure: {label}")
+        print(
+            f"Sample index {row_idx}: base risk={float(ctx.shap_expected_risk_oof.loc[row_idx]):.4f}, "
+            f"predicted 365d progression risk={predicted_risk:.4f}"
+        )
+        print_markdown_table(
+            build_single_sample_shap_df(
+                ctx.shap_risk_oof.loc[row_idx],
+                ctx.shap_x_oof.loc[row_idx],
+                ctx.feature_labels,
+                top_k=max_display,
+            )
+        )
+
+
+def emit_fig_ablation_only(ctx: ManuscriptContext) -> None:
+    model_performance_dir = ctx.output_dir / "model_performance"
+    model_performance_dir.mkdir(parents=True, exist_ok=True)
+    plot_modality_best_model_metric_deltas(
+        modality_perf=ctx.modality_perf,
+        baseline_stat=ctx.model_perf[ctx.model],
+        ablation_type="only",
+        figsize=(8.5, 6.0),
+        dpi=800,
+        output_path=model_performance_dir / "ablation_only.png",
+        model_name_map=DEFAULT_MODEL_NAME_MAP,
+    )
+    print_markdown_table(
+        build_modality_delta_df(
+            ctx.modality_perf,
+            ctx.model_perf[ctx.model],
+            ablation_type="only",
+        )
+    )
+
+
+def emit_fig_ablation_exclude(ctx: ManuscriptContext) -> None:
+    model_performance_dir = ctx.output_dir / "model_performance"
+    model_performance_dir.mkdir(parents=True, exist_ok=True)
+    plot_modality_best_model_metric_deltas(
+        modality_perf=ctx.modality_perf,
+        baseline_stat=ctx.model_perf[ctx.model],
+        ablation_type="exclude",
+        figsize=(8.5, 6.0),
+        dpi=800,
+        output_path=model_performance_dir / "ablation_exclude.png",
+        model_name_map=DEFAULT_MODEL_NAME_MAP,
+    )
+    print_markdown_table(
+        build_modality_delta_df(
+            ctx.modality_perf,
+            ctx.model_perf[ctx.model],
+            ablation_type="exclude",
+        )
+    )
+
+
+def emit_fig_km_diff_preds(ctx: ManuscriptContext) -> None:
+    late_start_dir = ctx.output_dir / "extended_data"
+    late_start_dir.mkdir(parents=True, exist_ok=True)
+    late_start_indices = ctx.late_start_bundle["late_start_indices"]
+    late_start_systemic_indices = ctx.late_start_bundle["late_start_systemic_indices"]
+    late_start_local_indices = ctx.late_start_bundle["late_start_local_indices"]
+
+    plot_km_late_start_vs_rest(
+        dm=ctx.dm,
+        late_start_indices=late_start_indices,
+        output_path=late_start_dir / "KM_late_start.png",
+        dpi=800,
+    )
+    _, systemic_local_mae = plot_mean_surv_late_start_systemic_vs_local_clean_leakage(
+        dm=ctx.dm,
+        time_grid=ctx.time_grid,
+        surv_clean=ctx.surv_oof,
+        surv_leakage=ctx.leakage_bundle["surv_leakage_df"],
+        late_start_systemic_indices=late_start_systemic_indices,
+        late_start_local_indices=late_start_local_indices,
+        output_path=late_start_dir / "mean_surv_systemic_vs_local_clean_leakage.png",
+        dpi=800,
+    )
+    _, mae = plot_mean_surv_late_start(
+        dm=ctx.dm,
+        time_grid=ctx.time_grid,
+        surv_clean=ctx.surv_oof,
+        surv_leakage=ctx.leakage_bundle["surv_leakage_df"],
+        late_start_indices=late_start_indices,
+        output_path=late_start_dir / "mean_surv_late_start.png",
+        dpi=800,
+    )
+
+    rest_indices = sorted(set(range(ctx.dm.shape[0])) - set(late_start_indices))
+    comparison_rows = [
+        summarize_group_rows(ctx.dm, rest_indices, label="Rest"),
+        summarize_group_rows(ctx.dm, late_start_indices, label="Late start"),
+        summarize_group_rows(
+            ctx.dm, late_start_systemic_indices, label="Late-start systemic"
+        ),
+        summarize_group_rows(
+            ctx.dm, late_start_local_indices, label="Late-start local"
+        ),
+    ]
+    print_markdown_table(pd.DataFrame(comparison_rows))
+
+    mae_rows = pd.DataFrame(
+        [
+            {"Curve comparison": key, "MAE": f"{value:.6f}"}
+            for key, value in {**mae, **systemic_local_mae}.items()
+        ]
+    )
+    print("\nCalibration error summaries:")
+    print_markdown_table(mae_rows)
+
+    gbsa_delta = ctx.leakage_bundle["delta_table"].loc[
+        ctx.leakage_bundle["delta_table"]["model"] == ctx.model
+    ]
+    if not gbsa_delta.empty:
+        print("\nGBSA leakage delta row:")
+        print_markdown_table(gbsa_delta.reset_index(drop=True))
+
+
+def emit_table_baseline(ctx: ManuscriptContext) -> None:
+    dm_summary = ctx.dm.groupby("PATIENT_ID").agg("first")
+    n_patients = int(dm_summary.shape[0])
+    rows = [
+        {"Variable": "n", "Overall": f"{n_patients:,}"},
+        {
+            "Variable": "Age, mean (sd)",
+            "Overall": f"{float(dm_summary['AGE'].mean()):.1f} ({float(dm_summary['AGE'].std()):.1f})",
+        },
+        {
+            "Variable": "HR positive",
+            "Overall": f"{int(dm_summary['HR'].sum()):,} ({float(dm_summary['HR'].mean() * 100):.1f}%)",
+        },
+        {
+            "Variable": "HER2 positive",
+            "Overall": f"{int(dm_summary['HER2'].sum()):,} ({float(dm_summary['HER2'].mean() * 100):.1f}%)",
+        },
+        {
+            "Variable": "Stage I-III",
+            "Overall": (
+                f"{int(n_patients - dm_summary['STAGE_CDM_DERIVED_IV'].sum()):,} "
+                f"({float((1 - dm_summary['STAGE_CDM_DERIVED_IV'].mean()) * 100):.1f}%)"
+            ),
+        },
+        {
+            "Variable": "Stage IV",
+            "Overall": (
+                f"{int(dm_summary['STAGE_CDM_DERIVED_IV'].sum()):,} "
+                f"({float(dm_summary['STAGE_CDM_DERIVED_IV'].mean() * 100):.1f}%)"
+            ),
+        },
+    ]
+    genomics_cols = [col for col in ctx.dm.columns if col.startswith("GENOMICS_")]
+    genomics_sums = dm_summary[genomics_cols].sum().sort_values(ascending=False)
+    for gene, count in genomics_sums.head(5).items():
+        rows.append(
+            {
+                "Variable": gene,
+                "Overall": f"{int(count):,} ({float(count / n_patients * 100):.1f}%)",
+            }
+        )
+    print_markdown_table(pd.DataFrame(rows))
+
+
+def emit_table_hr_her2_by_age(ctx: ManuscriptContext) -> None:
+    print_hr_her2_by_age_midrule_block(ctx.dm)
+
+
+def emit_table_pfs_by_age_bin(ctx: ManuscriptContext) -> None:
+    print_pfs_event_prevalence_latex(ctx.dm, bin_width=5)
+
+
+def emit_table_subtype_top_tx_lot1(ctx: ManuscriptContext) -> None:
+    treatment_combinations_to_latex_rows(
+        ctx.dm[ctx.dm["LINE"] == 1].copy(),
+        "AGENT",
+        csv_path=False,
+    )
+
+
+def emit_table_subtype_top_tx_lot2plus(ctx: ManuscriptContext) -> None:
+    treatment_combinations_to_latex_rows(
+        ctx.dm[ctx.dm["LINE"] != 1].copy(),
+        "TREATMENT",
+        csv_path=False,
+    )
+
+
+def emit_table_all_models_time_metrics(ctx: ManuscriptContext) -> None:
+    print_time_grid_resolution_note(ctx.time_grid)
+    print("IPCW-C")
+    print_time_dependent_metric_rows(ctx.model_perf, "ipcw")
+    print("\nAUC")
+    print_time_dependent_metric_rows(ctx.model_perf, "auc")
+    print("\nBrier score")
+    print_time_dependent_metric_rows(ctx.model_perf, "brier_score")
+
+
+def emit_fig_ext_subgroup_time_perf(ctx: ManuscriptContext) -> None:
+    model_performance_dir = ctx.output_dir / "model_performance"
+    model_performance_dir.mkdir(parents=True, exist_ok=True)
+    model_stat = ctx.model_perf[ctx.model]
+
+    plot_hrher2_time_curves(
+        model=ctx.model,
+        metric="auc",
+        time_points=model_stat.series["auc"].times,
+        include_overall=False,
+        shade="std",
+        shade_alpha=0.18,
+        y_limits=(0.65, 0.95),
+        title=f"{DEFAULT_MODEL_NAME_MAP.get(ctx.model, ctx.model)} AUC by HR/HER2",
+        figsize=(9.0, 6.0),
+        dpi=800,
+        output_path=model_performance_dir / "td_auc_subgroup.png",
+        series_overall=model_stat.series.get("auc"),
+        subgroup_series=model_stat.hrher2_series.get("auc", {}),
+        model_name_map=DEFAULT_MODEL_NAME_MAP,
+    )
+    print("subfigure: fig:auc-subgroup")
+    print_markdown_table(
+        build_subgroup_horizon_df(model_stat.hrher2_series.get("auc", {}))
+    )
+
+    plot_hrher2_time_curves(
+        model=ctx.model,
+        metric="ipcw",
+        time_points=model_stat.series["ipcw"].times,
+        include_overall=False,
+        shade="std",
+        shade_alpha=0.18,
+        y_limits=(0.61, 0.75),
+        title=f"{DEFAULT_MODEL_NAME_MAP.get(ctx.model, ctx.model)} IPCW-C by HR/HER2",
+        figsize=(9.0, 6.0),
+        dpi=800,
+        output_path=model_performance_dir / "td_ipcw_subgroup.png",
+        series_overall=model_stat.series.get("ipcw"),
+        subgroup_series=model_stat.hrher2_series.get("ipcw", {}),
+        model_name_map=DEFAULT_MODEL_NAME_MAP,
+    )
+    print("\nsubfigure: fig:ipcw-subgroup")
+    print_markdown_table(
+        build_subgroup_horizon_df(model_stat.hrher2_series.get("ipcw", {}))
+    )
+
+
+def emit_table_baseline_contrasts(ctx: ManuscriptContext) -> None:
+    for cohort_name, cohort_mask, high_sel, low_sel in build_contrast_cohort_defs(ctx):
+        smd = baseline_feature_value_contrast(
+            ctx.shap_x_oof,
+            high_sel=high_sel,
+            low_sel=low_sel,
+            cohort_sel=cohort_mask,
+        )
+        filtered, excluded = split_excluded_features(
+            smd,
+            MANUSCRIPT_BASELINE_CONTRAST_EXCLUDED_FEATURES,
+        )
+        clean, artifacts = split_artifacts(filtered, threshold=5.0)
+        print(cohort_name)
+        if not artifacts.empty:
+            print("Artifacts excluded from ranking:")
+            print_markdown_table(
+                build_ranked_series_df(
+                    artifacts,
+                    ctx.feature_labels,
+                    top_k=len(artifacts),
+                    value_name="Cohen's d (H-L)",
+                )
+            )
+        if not excluded.empty:
+            print("Features excluded from top-5 ranking:")
+            print_markdown_table(
+                build_ranked_series_df(
+                    excluded,
+                    ctx.feature_labels,
+                    top_k=len(excluded),
+                    value_name="Cohen's d (H-L)",
+                )
+            )
+        print_markdown_table(
+            build_ranked_series_df(
+                clean,
+                ctx.feature_labels,
+                top_k=5,
+                value_name="Cohen's d (H-L)",
+            )
+        )
+        print()
+
+
+def emit_table_shap_group_contrasts(ctx: ManuscriptContext) -> None:
+    for cohort_name, cohort_mask, high_sel, low_sel in build_contrast_cohort_defs(ctx):
+        shap_group = group_feature_contrast(
+            ctx.shap_risk_oof,
+            group_map=ctx.group_map,
+            high_sel=high_sel,
+            low_sel=low_sel,
+            cohort_sel=cohort_mask,
+        )
+        clean, artifacts = split_artifacts(shap_group, threshold=5.0)
+        print(cohort_name)
+        if not artifacts.empty:
+            print("Artifacts excluded from ranking:")
+            print_markdown_table(
+                build_ranked_series_df(
+                    artifacts,
+                    None,
+                    top_k=len(artifacts),
+                    column_name="Feature group",
+                    value_name="Cohen's d (H-L)",
+                )
+            )
+        print_markdown_table(
+            build_ranked_series_df(
+                clean,
+                None,
+                top_k=5,
+                column_name="Feature group",
+                value_name="Cohen's d (H-L)",
+            )
+        )
+        print()
+
+
+def emit_fig_grouped_shap(ctx: ManuscriptContext) -> None:
+    shap_dir = ctx.output_dir / "feature_importance"
+    shap_dir.mkdir(parents=True, exist_ok=True)
+    plot_group_mean_abs_shap(
+        shap_values=ctx.shap_oof,
+        feature_names=ctx.features,
+        group_map=ctx.group_map,
+        label_map=ctx.feature_labels,
+        top_k=10,
+        title="Feature-group contribution share to 365d progression risk",
+        figsize=(8.0, 5.0),
+        dpi=800,
+        output_path=shap_dir / "shap_group_mean.png",
+    )
+    share_df = build_group_shap_share_df(ctx.shap_risk_oof, ctx.group_map)
+    mean_share = share_df.mean(axis=0).sort_values(ascending=False).head(10)
+    print_markdown_table(
+        pd.DataFrame(
+            {
+                "Feature group": mean_share.index,
+                "Mean normalized SHAP share": [
+                    f"{float(value):.4f}" for value in mean_share.to_numpy()
+                ],
+            }
+        )
+    )
+
+
+def emit_table_leakage_deltas(ctx: ManuscriptContext) -> None:
+    print_markdown_table(ctx.leakage_bundle["delta_table"].reset_index(drop=True))
+
+
+def emit_table_leakage_performance(ctx: ManuscriptContext) -> None:
+    print_formatted_model_stats(ctx.leakage_bundle["model_perf"], row_order=BASE_MODELS)
+
+
+def emit_table_age_ablation_deltas(ctx: ManuscriptContext) -> None:
+    print_markdown_table(
+        ctx.age_ablation_bundle["delta_table_worse"].reset_index(drop=True)
+    )
+
+
+def emit_table_age_ablation_deltas_less_regularized(ctx: ManuscriptContext) -> None:
+    merged = ctx.age_ablation_less_regularized_bundle["delta_table"].merge(
+        ctx.age_ablation_less_regularized_bundle["p_signflip"],
+        on="model",
+        how="left",
+    )
+    print_markdown_table(merged.reset_index(drop=True))
+
+
+def emit_table_age_ablation_performance(ctx: ManuscriptContext) -> None:
+    print_formatted_model_stats(
+        ctx.age_ablation_bundle["model_perf"], row_order=BASE_MODELS
+    )
+
+
+def emit_fig_km_no_rad_prior(ctx: ManuscriptContext) -> None:
+    extended_dir = ctx.output_dir / "extended_data"
+    extended_dir.mkdir(parents=True, exist_ok=True)
+    plot_km_modeled_vs_no_rad_prior(
+        modeled_df=ctx.dm,
+        no_rad_prior_df=ctx.no_rad_prior_df,
+        output_path=extended_dir / "km_modeled_vs_no_rad_prior.png",
+        dpi=800,
+    )
+    modeled_median, modeled_low, modeled_high = median_pfs_ci(
+        ctx.dm["PFS_TIME_DAYS"],
+        ctx.dm["PFS_EVENT"],
+    )
+    no_rad_median, no_rad_low, no_rad_high = median_pfs_ci(
+        ctx.no_rad_prior_df["ORIGINAL_PFS_TIME_DAYS"],
+        ctx.no_rad_prior_df["ORIGINAL_PFS_EVENT"],
+    )
+    comparison_df = pd.DataFrame(
+        [
+            {
+                "Cohort": "Modeled cohort",
+                "mLoTs": f"{ctx.dm.shape[0]}",
+                "Patients": f"{ctx.dm['PATIENT_ID'].nunique()}",
+                "Event rate (%)": f"{float(np.mean(ctx.dm['PFS_EVENT'] == 1) * 100):.2f}",
+                "Median PFS": format_median_ci(
+                    modeled_median, modeled_low, modeled_high, digits=0
+                ),
+            },
+            {
+                "Cohort": "Dropped: no radiology <=90d prior",
+                "mLoTs": f"{ctx.no_rad_prior_df.shape[0]}",
+                "Patients": f"{ctx.no_rad_prior_df['PATIENT_ID'].nunique()}",
+                "Event rate (%)": (
+                    f"{float(np.mean(ctx.no_rad_prior_df['ORIGINAL_PFS_EVENT'] == 1) * 100):.2f}"
+                ),
+                "Median PFS": format_median_ci(
+                    no_rad_median, no_rad_low, no_rad_high, digits=0
+                ),
+            },
+        ]
+    )
+    print_markdown_table(comparison_df)
+
+
+def emit_table_selected_model_configs(ctx: ManuscriptContext) -> None:
+    print_markdown_table(ctx.selected_model_configs)
+
+
+def emit_table_feature_groups(ctx: ManuscriptContext) -> None:
+    for group_name, rules in ctx.feature_group_rules.items():
+        print(group_name)
+        print(json.dumps(rules, indent=2, sort_keys=True))
+        print()

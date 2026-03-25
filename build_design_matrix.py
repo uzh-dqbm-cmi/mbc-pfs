@@ -22,7 +22,7 @@ from qc import qc_from_received_flags
 
 def adjust_age(design_matrix: pd.DataFrame) -> None:
     if "AGE" not in design_matrix.columns:
-        return
+        raise ValueError("Expected 'AGE' column in design matrix for age adjustment")
     design_matrix["AGE"] = design_matrix["AGE"].astype(float) + np.floor_divide(
         design_matrix["LINE_START"], 365
     ).astype(int)
@@ -139,9 +139,6 @@ def build_design_matrix_pipeline(
         features_dict["TREATMENT"] = [
             c for c in features_dict["TREATMENT"] if c not in treatment_cols
         ]
-    # save features dict directly
-    with open("data/features_dict.json", "w", encoding="utf-8") as handle:
-        json.dump(features_dict, handle, indent=2)
     bool_cols = [c for c in design_matrix.columns if design_matrix[c].dtype == "bool"]
     # typecast all boolean columns to Int8
     print(f"Converting {len(bool_cols)} boolean columns to Int8")
@@ -179,34 +176,17 @@ def build_design_matrix_pipeline(
     )
     for col in float_cols:
         design_matrix[col] = design_matrix[col].round(round_decimals)
-    # # drop items with HAS_RADIOLOGY_REPORT_90_PRIOR
-    # no_radiology_mask = design_matrix["HAS_RADIOLOGY_REPORT_90_PRIOR"] == 0
-    # dropped_no_radiology = design_matrix.loc[no_radiology_mask].copy()
-    # if not dropped_no_radiology.empty:
-    #     dropped_no_radiology.to_csv(
-    #         "data/dropped_lines_no_radiology_prior.csv", index=False
-    #     )
-    # patients_before_radiology = set(design_matrix["PATIENT_ID"].unique())
-    # design_matrix = design_matrix.loc[~no_radiology_mask].reset_index(drop=True)
-    # patients_after_radiology = set(design_matrix["PATIENT_ID"].unique())
-    # removed_patients_radiology = patients_before_radiology - patients_after_radiology
-    # print(
-    #     "Dropping"
-    #     f" {int(no_radiology_mask.sum()):,} LoTs with no radiology report within 90 days prior"
-    #     f" (affects {dropped_no_radiology['PATIENT_ID'].nunique():,} patients;"
-    #     f" removes {len(removed_patients_radiology):,} patients entirely)"
-    # )
-    # design_matrix.drop(columns=["HAS_RADIOLOGY_REPORT_90_PRIOR"], inplace=True)
-    # print(
-    #     "Remaining after radiology lookback filter:"
-    #     f" {design_matrix.shape} across {design_matrix['PATIENT_ID'].nunique():,} patients"
-    # )
-    # just in case not ignored
     design_matrix.drop(
         columns=["ORIGINAL_PFS_TIME_DAYS", "ORIGINAL_PFS_EVENT"],
         inplace=True,
         errors="ignore",
     )
+    design_matrix["IS_MLOT1"] = design_matrix["LINE"] == 1
+    features_dict.setdefault("TREATMENT", [])
+    if "IS_MLOT1" not in features_dict["TREATMENT"]:
+        features_dict["TREATMENT"].append("IS_MLOT1")
+    with open("data/features_dict.json", "w", encoding="utf-8") as handle:
+        json.dump(features_dict, handle, indent=2)
     design_matrix.to_csv(design_matrix_path, index=False)
     return design_matrix
 

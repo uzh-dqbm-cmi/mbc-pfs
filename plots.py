@@ -1759,8 +1759,19 @@ def plot_shap_summary_from_arrays(
     plt.rcParams.update(STYLE)
     shap_values = np.asarray(shap_values, dtype=float)
     X = np.asarray(X, dtype=float)
+    if shap_values.ndim != 2 or X.ndim != 2:
+        raise ValueError(
+            "shap_values and X must be 2D arrays with shape (n_samples, n_features)."
+        )
     if shap_values.shape != X.shape:
         raise ValueError("shap_values and X must have identical shapes.")
+    if top_k < 1:
+        raise ValueError("top_k must be >= 1.")
+    if len(feature_names) != shap_values.shape[1]:
+        raise ValueError(
+            "feature_names must align with shap_values/X columns: "
+            f"{len(feature_names)} names vs {shap_values.shape[1]} columns."
+        )
     display_names = [
         label_map.get(name, name) if label_map else name for name in feature_names
     ]
@@ -2477,14 +2488,6 @@ def plot_tertile_stratified_survival(
     summary_df["mae_pred_vs_km"] = summary_df["stratum"].map(mae_by_label)
 
     rmst_compare = details.get("rmst_comparison")
-    if isinstance(rmst_compare, pd.DataFrame) and not rmst_compare.empty:
-        print("\nRMST comparison (KM vs mean predicted survival):")
-        display_df = rmst_compare.copy()
-        for col in ("rmst_km", "rmst_pred_mean", "rmst_diff"):
-            display_df[col] = display_df[col].apply(
-                lambda x: f"{x:.0f}" if np.isfinite(x) else "nan"
-            )
-        print(display_df.to_string(index=False))
     return output_path, summary_df, details
 
 
@@ -2802,16 +2805,9 @@ def plot_tertile_stratified_survival_and_km(
     summary_df = pd.DataFrame(summary_rows)
     summary_df = summary_df.set_index("stratum").reindex(STRATA_LABELS).reset_index()
     summary_df["n"] = summary_df["n"].fillna(0).astype(int)
+    summary_df["mae_pred_vs_km"] = summary_df["stratum"].map(mae_by_label)
 
     rmst_compare = details.get("rmst_comparison")
-    if isinstance(rmst_compare, pd.DataFrame) and not rmst_compare.empty:
-        print("\nRMST comparison (KM vs mean predicted survival):")
-        display_df = rmst_compare.copy()
-        for col in ("rmst_km", "rmst_pred_mean", "rmst_diff"):
-            display_df[col] = display_df[col].apply(
-                lambda x: f"{x:.0f}" if np.isfinite(x) else "nan"
-            )
-        print(display_df.to_string(index=False))
 
     combined_table = (
         summary_df[["stratum", "n"]]
@@ -2894,7 +2890,7 @@ def plot_tertile_stratified_survival_and_km(
         "stratum": "Stratum",
         "count": "Count",
         "RMST_KM": "KM RMST",
-        "RMST delta": "delta KMST",
+        "RMST delta": "\u0394RMST",
     }
     col_labels = [
         header_labels.get(col, col.replace("_at_risk", "").replace("d", " d"))

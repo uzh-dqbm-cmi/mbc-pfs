@@ -33,7 +33,9 @@ def data_json(stem: str, suffix: Optional[str] = None) -> Path:
 
 
 def results_root(base: str = "results", suffix: Optional[str] = None) -> str:
-    """Return the directory that should hold model outputs."""
+    """
+    Return the directory that should hold model outputs.
+    """
 
     base_clean = (base or "results").strip()
     suffix_clean = (suffix or "").strip()

@@ -37,10 +37,15 @@ from utils import (
 )
 
 MODEL_NAME = "DeepHit"
+from copy import deepcopy
+from pathlib import Path
 
+import numpy as np
+import torch.nn as nn
 from pycox.models import DeepHitSingle
 from pycox.models.data import pair_rank_mat
 from pycox.preprocessing.label_transforms import LabTransDiscreteTime
+from torch.utils.data import DataLoader
 
 from config import ADMIN_CENSOR_DAYS
 from model_setup import _seed_reproducibly
@@ -62,6 +67,7 @@ def train_deephit(
     os.makedirs(outdir, exist_ok=True)
 
     _seed_reproducibly(int(config["seed"]))
+    RNG = np.random.default_rng(config["seed"])
 
     splits = preprocess_df(
         train_idx=train_idx,
@@ -131,8 +137,12 @@ def train_deephit(
     X_val = torch.tensor(splits["X_val_np"], dtype=torch.float32, device=DEVICE)
     time_val = torch.tensor(time_val_discrete_np, dtype=torch.int64, device=DEVICE)
     event_val = torch.tensor(event_val_discrete_np, dtype=torch.int32, device=DEVICE)
+    X_test = torch.tensor(splits["X_test_np"], dtype=torch.float32, device=DEVICE)
+    time_test = torch.tensor(time_test_discrete_np, dtype=torch.int64, device=DEVICE)
+    event_test = torch.tensor(event_test_discrete_np, dtype=torch.int32, device=DEVICE)
     train_data = list(zip(X_train, time_train, event_train))
     val_data = list(zip(X_val, time_val, event_val))
+    test_data = list(zip(X_test, time_test, event_test))
 
     num_input_features = X_train.size(1)
 
