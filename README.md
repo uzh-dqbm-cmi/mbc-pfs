@@ -41,8 +41,14 @@ python build_ablation_configs.py
 python ablation.py --models deepsurv,deephit --runner dl
 python ablation.py --models coxph,gbsa,rsf --runner cpu --max-parallel 32
 ```
-Alternatively, refer to `commands.txt` for running models with log outputs and timing.
+Alternatively, refer to `commands.txt` for running models with log outputs and timing
+
+## Validation
+GENIE BPC BRCA cohort data should be put under data/genie. 
+from repo root, please run `python -m genie_validation.build` then `python -m genie_validation.run_gbsa`.
+Ensure the gbsa model is already trained and created.
 
 # Data analysis
 
 `python manuscript.py` will generate all results reported in the manuscript after all experiments are completed.
+
