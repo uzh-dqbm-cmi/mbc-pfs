@@ -10,3 +10,6 @@ data/msk_chord_2024/
 .pytest_cache/
 .cache/
 logs/
+
+data/genie/
+data/genie_design_matrix.csv
