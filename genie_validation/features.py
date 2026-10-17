@@ -23,14 +23,13 @@ from design_matrix_pipeline.modalities.tumor_markers import (
 )
 
 from . import mapping as M
-from . import paths
 
 FrameAndMappings = Tuple[pd.DataFrame, List[M.FeatureMapping]]
 
 
 @dataclass
 class FeatureContext:
-    labels: pd.DataFrame 
+    labels: pd.DataFrame
     cancer: pd.DataFrame
     patient: pd.DataFrame
     imaging: pd.DataFrame
@@ -38,7 +37,7 @@ class FeatureContext:
     pathology: pd.DataFrame
     panel: pd.DataFrame
     mutations: pd.DataFrame
-    cna: pd.DataFrame 
+    cna: pd.DataFrame
     groups: Dict[str, List[str]]
 
     @property
@@ -220,6 +219,7 @@ def build_tumor_markers(ctx: FeatureContext) -> FrameAndMappings:
                 "CEA is not measured in GENIE -> empty (MISSING=1, kinetics NaN)", "empty"))
     return out, mappings
 
+
 def build_ecog(ctx: FeatureContext) -> FrameAndMappings:
     cols = ctx.groups["ECOG"]
     out = ctx.keys
@@ -237,6 +237,7 @@ def build_ecog(ctx: FeatureContext) -> FrameAndMappings:
         for c in cols
     ]
     return out, mappings
+
 
 def build_pdl1(ctx: FeatureContext) -> FrameAndMappings:
     cols = ctx.groups["PDL1"]
@@ -285,6 +286,7 @@ def build_mmr(ctx: FeatureContext) -> FrameAndMappings:
     ]
     return out, mappings
 
+
 def build_treatment(ctx: FeatureContext) -> FrameAndMappings:
     cols = ctx.groups["TREATMENT"]
     planned_cols = {c for c in cols if c.startswith("PLANNED_AGENT_")}
@@ -294,6 +296,7 @@ def build_treatment(ctx: FeatureContext) -> FrameAndMappings:
     for c in cols:
         out[c] = 0
     out = out.astype({c: "int8" for c in cols})
+
     for idx, drug_str in enumerate(ctx.labels["REGIMEN_DRUGS"].fillna("")):
         suffixes = M.line_agent_suffixes(drug_str) or set()
         for suffix in suffixes:
@@ -322,6 +325,7 @@ def build_treatment(ctx: FeatureContext) -> FrameAndMappings:
             mappings.append(M.FeatureMapping(c, "TREATMENT", "regimen_cancer_level_dataset.csv",
                                              "regimen_drugs", "treatment-class flag", "mapped"))
     return out, mappings
+
 
 def build_local_treatment(ctx: FeatureContext) -> FrameAndMappings:
     cols = ctx.groups["LOCAL_TREATMENT"]
@@ -381,6 +385,7 @@ def build_cancer_presence(ctx: FeatureContext) -> FrameAndMappings:
     ]
     return out, mappings
 
+
 def build_tumor_sites(ctx: FeatureContext) -> FrameAndMappings:
     cols = ctx.groups["TUMOR_SITES"]
     flag_cols = list(M.DIST_METS_TO_TUMOR_SITE.keys())
@@ -432,6 +437,7 @@ def build_tumor_sites(ctx: FeatureContext) -> FrameAndMappings:
     ]
     return out, mappings
 
+
 def build_genomics(ctx: FeatureContext) -> FrameAndMappings:
     cols = ctx.groups["GENOMICS"]
     mut_genes = [c[len("GENOMICS_MUTATION_"):] for c in cols if c.startswith("GENOMICS_MUTATION_")]
@@ -473,6 +479,7 @@ def build_genomics(ctx: FeatureContext) -> FrameAndMappings:
     out = out.merge(
         ctx.labels[["PATIENT_ID", "LINE", "LINE_START"]], on=["PATIENT_ID", "LINE"], how="left"
     )
+
     seq_day = pd.to_numeric(out["PATIENT_ID"].map(patient_to_seqday), errors="coerce")
     available = seq_day.notna() & (seq_day <= out["LINE_START"])
 

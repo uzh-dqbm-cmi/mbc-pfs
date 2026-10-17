@@ -30,8 +30,6 @@ from utils import (
     save_full_survival_curves,
 )
 
-FEATURE_LABELS = json.load(open("data/feature_display_names.json", "r"))
-
 
 def train_gbsa(
     train_idx: np.ndarray,
@@ -94,6 +92,18 @@ def train_gbsa(
 
             outdir.mkdir(parents=True, exist_ok=True)
             joblib.dump(model, outdir / "model.joblib")
+            joblib.dump(
+                {
+                    "model_type": "gbsa",
+                    "model": model,
+                    "preprocessor": splits["preprocessor"],
+                    "numeric_cols": splits["numeric_cols"],
+                    "binary_cols": splits["binary_cols"],
+                    "feature_cols": splits["feature_cols"],
+                    "config": config,
+                },
+                outdir / "model_bundle.joblib",
+            )
 
             save_eval_metrics(
                 metrics=metrics,

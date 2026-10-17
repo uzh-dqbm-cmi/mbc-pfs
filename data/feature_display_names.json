@@ -213,7 +213,7 @@
   "PLANNED_AGENT_CHEMO_ERIBULIN": "Chemotherapy: Eribulin",
   "PLANNED_AGENT_CHEMO_GEMCITABINE": "Chemotherapy: Gemcitabine",
   "PLANNED_AGENT_CHEMO_INVESTIGATIVE": "Chemotherapy: investigational agent",
-  "PLANNED_AGENT_CHEMO_OTHER": "Chemotherapy: other agent",
+  "PLANNED_AGENT_CHEMO_OTHER": "Chemotherapy: non-top-5 agents",
   "PLANNED_AGENT_CHEMO_PACLITAXEL": "Chemotherapy: Paclitaxel",
   "PLANNED_AGENT_HORMONE_ANASTROZOLE": "Endocrine therapy: Anastrozole",
   "PLANNED_AGENT_HORMONE_EXEMESTANE": "Endocrine therapy: Exemestane",

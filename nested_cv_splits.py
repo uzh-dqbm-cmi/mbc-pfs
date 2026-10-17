@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import argparse
 import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -10,9 +10,30 @@ import pandas as pd
 from sklearn.model_selection import (StratifiedGroupKFold,
                                      StratifiedShuffleSplit)
 
-from cv_config import K_INNER, K_OUTER
-from model_setup import EVENT_COL, GROUP_COL, TIME_COL
+from config import (
+    C_INDEX,
+    EVENT_COL,
+    FEATURES_DICT_PATH,
+    LINE_COL,
+    LINE_START_WINDOW_DAYS,
+    MODALITY_GROUPS,
+    PATIENT_ID_COL,
+    RESULTS_PATH,
+    TIME_COL,
+)
+from cv_config import (
+    ABLATION_CONFIGS_PATH,
+    C_SELECTION_EPS,
+    K_INNER,
+    K_OUTER,
+    MODEL_CONFIGS,
+    RANDOM_STATE,
+    SPLITS_OUTPUT_DIR,
+)
+from data_paths import data_dir, window_results_root
 from preprocess import _hr_her2_admin_strata
+
+GROUP_COL = PATIENT_ID_COL
 
 
 def _min_groups_per_stratum(strata: np.ndarray, groups: np.ndarray) -> int:
@@ -94,8 +115,7 @@ def generate_nested_cv_indices(
     design_matrix: pd.DataFrame,
     seed: int,
     output_dir: Path,
-) -> Tuple[Path, List[Path]]:
-
+) -> Tuple[Dict[str, object], List[Path]]:
     if design_matrix.empty:
         raise ValueError("Design matrix is empty; cannot build nested CV splits.")
 
@@ -125,7 +145,7 @@ def generate_nested_cv_indices(
     if len(groups_all) != len(strata):
         raise ValueError("Strata and design matrix length mismatch.")
     # assert and print the strata numbers: should be 8 in total
-    unique, counts = np.unique(strata, return_counts=True)
+    unique = np.unique(strata)
     # print(f"Strata counts: {strata_counts}")
     assert len(unique) == 8, f"Expected 8 strata, found {len(unique)}."
 
@@ -245,3 +265,157 @@ def generate_nested_cv_indices(
         json.dump(manifest, fout, indent=2)
 
     return manifest, split_paths
+
+
+def add_run_args(parser: argparse.ArgumentParser, default_models: str) -> None:
+    parser.add_argument(
+        "--models",
+        type=str,
+        default=default_models,
+        help="Comma-separated model list.",
+    )
+    parser.add_argument(
+        "--exclude-modality",
+        type=str,
+        default=None,
+        help="Name of modality group to exclude.",
+    )
+    parser.add_argument(
+        "--only-modality",
+        type=str,
+        default=None,
+        help="Name of modality group to use exclusively.",
+    )
+    parser.add_argument(
+        "--drop-age",
+        action="store_true",
+        help="Drop AGE column from design matrix.",
+    )
+    parser.add_argument(
+        "--no-treatment-masking",
+        action="store_true",
+        help="Disable treatment masking by dropping PLANNED_ instead of default prefixes.",
+    )
+    parser.add_argument(
+        "--window-days",
+        type=int,
+        default=LINE_START_WINDOW_DAYS,
+        help=(
+            "Treatment window of the design matrix: other values than the default read "
+            "data/window_<N>d/ and write splits and results to results_window/<N>d/."
+        ),
+    )
+
+
+def _modality_columns(dm: pd.DataFrame, modality: str) -> List[str]:
+    if modality == "Surveillance Patterns":
+        return [c for c in dm.columns if c in MODALITY_GROUPS["Surveillance Patterns"]]
+    features = json.load(open(FEATURES_DICT_PATH))
+    return sorted(
+        {
+            col
+            for group in MODALITY_GROUPS[modality]
+            for col in features[group]
+            if col in dm.columns
+        }
+    )
+
+
+def _write_columns(path: Path, cols: List[str]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as fout:
+        fout.write(", ".join(cols) + "\n")
+
+
+def prepare_run(
+    args: argparse.Namespace,
+) -> Tuple[pd.DataFrame, Dict[str, object], Path, Optional[Dict[str, List[str]]]]:
+    # only one of exclude_modality, only_modality, drop_age should be set
+    n_ablations = sum(
+        (args.exclude_modality is not None, args.only_modality is not None, args.drop_age)
+    )
+    if n_ablations > 1:
+        raise SystemExit("Only one of --exclude-modality, --only-modality, --drop-age can be set.")
+    window_run = args.window_days != LINE_START_WINDOW_DAYS
+    if window_run and (n_ablations or args.no_treatment_masking):
+        raise SystemExit("--window-days runs the masked full-model nested CV only.")
+
+    dm = pd.read_csv(data_dir(args.window_days) / "design_matrix.csv")
+    dm = dm[dm[EVENT_COL] != -1].reset_index(drop=True)
+    if window_run:
+        results_root = window_results_root(args.window_days)
+        splits_dir = results_root / "cv_splits"
+    else:
+        splits_dir = Path(SPLITS_OUTPUT_DIR)
+        if args.no_treatment_masking:
+            results_root = Path("leakage")
+        else:
+            results_root = Path("results_ablation") if n_ablations else RESULTS_PATH
+    manifest, _ = generate_nested_cv_indices(
+        design_matrix=dm, seed=RANDOM_STATE, output_dir=splits_dir
+    )
+    if not n_ablations:
+        return dm, manifest, results_root, None
+
+    ablation_configs = json.load(open(ABLATION_CONFIGS_PATH))
+    print(f"Loaded ablation config names from {ABLATION_CONFIGS_PATH}.")
+    if args.exclude_modality:
+        exclude_cols = _modality_columns(dm, args.exclude_modality)
+        dm = dm.drop(columns=exclude_cols)
+        results_root = results_root / f"exclude_{args.exclude_modality.lower()}"
+        # dump a text line saying which columns were dropped to results_root/excluded_columns.txt
+        _write_columns(results_root / "excluded_columns.txt", exclude_cols)
+    elif args.only_modality:
+        include_cols = _modality_columns(dm, args.only_modality) + [
+            EVENT_COL,
+            TIME_COL,
+            PATIENT_ID_COL,
+            LINE_COL,
+        ]
+        dm = dm[include_cols]
+        print(f"Kept only cols {include_cols} for modality {args.only_modality}")
+        results_root = results_root / f"only_{args.only_modality.lower()}"
+        # dump a text line saying which columns were dropped to results_root/excluded_columns.txt
+        _write_columns(results_root / "included_columns.txt", include_cols)
+    else:
+        dm = dm.drop(columns=["AGE"])
+        print("Dropped AGE column from design matrix.")
+        results_root = results_root / "drop_age"
+    return dm, manifest, results_root, ablation_configs
+
+
+def model_configs(
+    model: str, ablation_configs: Optional[Dict[str, List[str]]]
+) -> Dict[str, dict]:
+    configs = MODEL_CONFIGS[model]
+    if ablation_configs is not None:
+        allowed = set(ablation_configs.get(model, []))
+        configs = [cfg for cfg in configs if cfg.get("name") in allowed]
+        if len(configs) != 1:
+            raise ValueError(
+                f"Expected exactly one ablation config for model {model} in {ABLATION_CONFIGS_PATH}, got {len(configs)}."
+            )
+        print(f"Using single ablation config {configs[0]['name']} for {model}; skipping inner folds.")
+    return {cfg["name"]: cfg for cfg in configs}
+
+
+def select_best_config(
+    config_scores: Dict[str, Dict[str, float]],
+    rank_of: Dict[str, int],
+) -> tuple[str, float, list[str]]:
+    best_c = max(float(metrics[C_INDEX]) for metrics in config_scores.values())
+    tied_names = sorted(
+        (
+            name
+            for name, metrics in config_scores.items()
+            if float(metrics[C_INDEX]) >= (best_c - C_SELECTION_EPS)
+        ),
+        key=lambda name: rank_of[name],
+    )
+    return tied_names[0], best_c, tied_names
+
+
+def write_metrics(path: Path, payload: Dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "w") as fout:
+        json.dump(payload, fout, indent=2)

@@ -6,7 +6,7 @@ from config import AMPLIFICATION_GENES, DELETION_GENES, MUTATION_GENES
 
 from .base import ModalityFrame
 
-CNA_FILE = "data_cna_transposed.tsv"
+CNA_FILE = "data_cna.tsv"
 MUTATION_FILE = "data_mutations.tsv"
 GENE_PANEL_FILE = "data_gene_panel_matrix.tsv"
 
@@ -50,20 +50,17 @@ def _build_mutation_frame(
 def _build_cna_frame(
     ctx, sequencing_sample_ids: pd.Index
 ) -> tuple[pd.DataFrame, list[str]]:
-    cna_header = pd.read_csv(ctx.data_dir / CNA_FILE, sep="\t", dtype=str, nrows=0)
-    available_amp_genes = [gene for gene in AMPLIFICATION_GENES if gene in cna_header]
-    available_del_genes = [gene for gene in DELETION_GENES if gene in cna_header]
-
-    cna = pd.read_csv(
-        ctx.data_dir / CNA_FILE,
-        sep="\t",
-        dtype=str,
-        usecols=["SAMPLE_ID", *available_amp_genes, *available_del_genes],
+    cna = (
+        pd.read_csv(ctx.data_dir / CNA_FILE, sep="\t", dtype=str)
+        .set_index("Hugo_Symbol")
+        .T.rename_axis("SAMPLE_ID")
     )
-    if not cna["SAMPLE_ID"].is_unique:
+    available_amp_genes = [gene for gene in AMPLIFICATION_GENES if gene in cna.columns]
+    available_del_genes = [gene for gene in DELETION_GENES if gene in cna.columns]
+    if not cna.index.is_unique:
         raise ValueError("Expected one CNA row per SAMPLE_ID")
 
-    cna = cna.set_index("SAMPLE_ID").reindex(sequencing_sample_ids)
+    cna = cna[[*available_amp_genes, *available_del_genes]].reindex(sequencing_sample_ids)
     if cna.index.hasnans or cna.isna().all(axis=1).any():
         missing_samples = cna.index[cna.isna().all(axis=1)].tolist()
         raise ValueError(

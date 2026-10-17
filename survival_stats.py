@@ -108,4 +108,3 @@ def km_median_ci(
     median_low = _first_time_leq(lower_s, 0.5)
     median_high = _first_time_leq(upper_s, 0.5)
     return (float(median), float(median_low), float(median_high))
-

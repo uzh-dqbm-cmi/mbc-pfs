@@ -5,6 +5,9 @@ from collections import Counter
 from pathlib import Path
 from typing import Sequence
 
+from config import RESULTS_PATH
+from cv_config import ABLATION_CONFIGS_PATH
+
 DEFAULT_MODELS = ("coxph", "deephit", "deepsurv", "gbsa", "rsf")
 MIN_CONFIG_COUNT = 3
 
@@ -35,9 +38,9 @@ def build_ablation_configs(
 
 
 def main() -> None:
-    out_path: Path = Path("data/ablation_configs.json")
+    out_path = ABLATION_CONFIGS_PATH
     configs = build_ablation_configs(
-        results_root=Path("results"),
+        results_root=RESULTS_PATH,
         models=DEFAULT_MODELS,
     )
     out_path.parent.mkdir(parents=True, exist_ok=True)

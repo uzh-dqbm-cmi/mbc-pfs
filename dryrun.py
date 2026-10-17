@@ -35,8 +35,6 @@ warnings.filterwarnings(
     category=UserWarning,
 )
 
-MODEL_NAME = "DRYRUN"
-
 
 def train_dryrun(
     train_idx: np.ndarray,

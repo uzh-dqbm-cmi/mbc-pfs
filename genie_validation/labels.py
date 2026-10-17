@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import pandas as pd
 
-from config import ADMIN_CENSOR_DAYS
+from build_pfs import apply_censor
+from config import MIN_PFS_DAYS
 from . import mapping as M
 from . import paths
 
-MIN_LINE_DAYS = 28
 LINE_SOURCE = "genie_pfs_i"
 
 
@@ -16,48 +16,49 @@ def _read_cohort_patients() -> pd.Index:
     return pd.Index(cohort, name="PATIENT_ID")
 
 
+def candidate_regimens() -> pd.DataFrame:
+    reg = pd.read_csv(paths.REGIMEN_FILE, low_memory=False).rename(
+        columns={"record_id": "PATIENT_ID", "ca_seq": "CA_SEQ",
+                 "dx_reg_start_int": "LINE_START", "regimen_drugs": "REGIMEN_DRUGS"}
+    )
+    cancer = pd.read_csv(paths.CANCER_FILE, usecols=["record_id", "ca_seq", "ca_type"]).rename(
+        columns={"record_id": "PATIENT_ID", "ca_seq": "CA_SEQ"}
+    )
+    merged = reg.merge(cancer, on=["PATIENT_ID", "CA_SEQ"], how="left")
+
+    keep = (
+        merged["PATIENT_ID"].isin(_read_cohort_patients())
+        & merged["ca_type"].eq("Breast Cancer")
+        & merged["LINE_START"].notna()
+        & merged["pfs_i_g_status"].isin([0.0, 1.0])
+        & merged["tt_pfs_i_g_days"].notna()
+    )
+
+    merged = merged.loc[keep].sort_values(["PATIENT_ID", "LINE_START"], kind="mergesort")
+    merged["LINE"] = merged.groupby("PATIENT_ID").cumcount() + 1
+    return merged
+
+
+def clean_outcomes(out: pd.DataFrame) -> pd.DataFrame:
+    return apply_censor(out[out["PFS_TIME_DAYS"] >= MIN_PFS_DAYS])
+
+
 def build_labels(apply_drug_filter: bool = True) -> pd.DataFrame:
-    cohort_patients = _read_cohort_patients()
-
-    reg = pd.read_csv(paths.REGIMEN_FILE, low_memory=False)
-    cancer = pd.read_csv(paths.CANCER_FILE, low_memory=False)
-
-    cancer_keys = cancer[["record_id", "ca_seq", "ca_type"]].copy()
-    merged = reg.merge(cancer_keys, on=["record_id", "ca_seq"], how="left")
-
-    merged = merged[merged["record_id"].isin(cohort_patients)]
-    merged = merged[merged["ca_type"].eq("Breast Cancer")]
-
-    line_start = pd.to_numeric(merged["dx_reg_start_int"], errors="coerce")
-    status = pd.to_numeric(merged["pfs_i_g_status"], errors="coerce")
-    time_days = pd.to_numeric(merged["tt_pfs_i_g_days"], errors="coerce")
-
-    keep = line_start.notna() & status.isin([0.0, 1.0]) & time_days.notna()
-    merged = merged.loc[keep].copy()
-
+    merged = candidate_regimens()
     out = pd.DataFrame(
         {
-            "PATIENT_ID": merged["record_id"].astype(str),
-            "CA_SEQ": pd.to_numeric(merged["ca_seq"], errors="coerce").astype("Int64"),
-            "LINE_START": line_start.loc[merged.index].astype(int),
-            "PFS_TIME_DAYS": time_days.loc[merged.index].astype(float),
-            "PFS_EVENT": status.loc[merged.index].astype(int),
-            "REGIMEN_DRUGS": merged["regimen_drugs"].astype("string"),
+            "PATIENT_ID": merged["PATIENT_ID"].astype(str),
+            "CA_SEQ": merged["CA_SEQ"].astype("Int64"),
+            "LINE_START": merged["LINE_START"].astype(int),
+            "PFS_TIME_DAYS": merged["tt_pfs_i_g_days"].astype(float),
+            "PFS_EVENT": merged["pfs_i_g_status"].astype(int),
+            "REGIMEN_DRUGS": merged["REGIMEN_DRUGS"].astype("string"),
             "LINE_SOURCE": LINE_SOURCE,
+            "LINE": merged["LINE"],
         }
     )
 
-    out = out.sort_values(["PATIENT_ID", "LINE_START"], kind="mergesort").reset_index(
-        drop=True
-    )
-    out["LINE"] = out.groupby("PATIENT_ID").cumcount() + 1
-
-    out = out[out["PFS_TIME_DAYS"] >= MIN_LINE_DAYS].copy()
-    longer = out["PFS_TIME_DAYS"] > ADMIN_CENSOR_DAYS
-    out.loc[longer, "PFS_TIME_DAYS"] = float(ADMIN_CENSOR_DAYS)
-    out.loc[longer, "PFS_EVENT"] = 0
-    exact = (out["PFS_TIME_DAYS"] == ADMIN_CENSOR_DAYS) & (out["PFS_EVENT"] == 1)
-    out.loc[exact, "PFS_TIME_DAYS"] = ADMIN_CENSOR_DAYS - 0.001
+    out = clean_outcomes(out)
 
     if apply_drug_filter:
         keep_line = out["REGIMEN_DRUGS"].map(

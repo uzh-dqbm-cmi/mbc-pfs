@@ -184,6 +184,7 @@ def time_dependent_evals(
     weighted_MAE_PO : float
         Weighted MAE under pseudo-observation method (truncated at 365 days).
     """
+
     resolved_eval_times: List[float] = []
     ipcw: List[float] = []
     brier_score: List[float] = []
@@ -254,6 +255,7 @@ def compute_time_dependent_auc(
     eval_horizons: Sequence[float],
 ) -> Dict[str, object]:
     """Compute td-AUC curve and align it to requested evaluation horizons."""
+
     censoring_estimator = CensoringDistributionEstimator().fit(y_train)
     censoring_surv = censoring_estimator.predict_proba(time_grid_train_np)
     censoring_valid_mask = censoring_surv > 0.0
@@ -372,6 +374,7 @@ def evaluate_lot_and_stage_metrics(
     hr_her2_metrics : Dict[str, Dict[str, object]]
         Metrics for each observed HR/HER2 combination (HR+/-, HER2+/-).
     """
+
     lot_metrics: Dict[str, Dict[str, object]] = {}
     hr_her2_metrics: Dict[str, Dict[str, object]] = {}
 

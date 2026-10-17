@@ -1,12 +1,56 @@
-{ time PYTHONUNBUFFERED=1 python cpu_nested_cv.py --models coxph,gbsa,rsf; } 2>&1 | tee logs/cpu_nested_cv_$(date +%Y%m%d_%H%M%S).log && \
-{ time PYTHONUNBUFFERED=1 python cpu_nested_cv.py --no-treatment-masking --models coxph,gbsa,rsf; } 2>&1 | tee logs/cpu_leakage_nested_cv_$(date +%Y%m%d_%H%M%S).log && \
-{ time PYTHONUNBUFFERED=1 python cpu_nested_cv.py --models gbsa --drop-age-less-regularized; } 2>&1 | tee logs/cpu_ablation_age_less_regularized_$(date +%Y%m%d_%H%M%S).log
+# Run from the repository root, in this order. Inputs: data/msk_chord_2024/ and data/genie/ (see README.md).
+# Sections marked heavy fit models or draw 1,000 patient bootstrap resamples.
 
-{ time PYTHONUNBUFFERED=1 python gbsa_shap.py; } 2>&1 | tee logs/gbsa_shap_$(date +%Y%m%d_%H%M%S).log
+# 1. MSK-CHORD cohort, PFS labels and design matrix
+python pipeline_overview.py
 
-{ time PYTHONUNBUFFERED=1 python dl_nested_cv.py --models deepsurv,deephit; } 2>&1 | tee logs/dl_nested_cv_$(date +%Y%m%d_%H%M%S).log && \
-{ time PYTHONUNBUFFERED=1 python dl_nested_cv.py --no-treatment-masking --models deepsurv,deephit; } 2>&1 | tee logs/dl_leakage_nested_cv_$(date +%Y%m%d_%H%M%S).log
+# 2. Nested cross-validation, SHAP, modality and age ablations (heavy)
+python cpu_nested_cv.py --models coxph,gbsa,rsf
+python cpu_nested_cv.py --no-treatment-masking --models coxph,gbsa,rsf
+python dl_nested_cv.py --models deepsurv,deephit
+python dl_nested_cv.py --no-treatment-masking --models deepsurv,deephit
+python gbsa_shap.py
+python build_ablation_configs.py
+python ablation.py --runner cpu --models coxph,gbsa,rsf --max-parallel 32
+python ablation.py --runner dl --models deepsurv,deephit
 
-{ time PYTHONUNBUFFERED=1 python ablation.py --models deepsurv,deephit --runner dl; } 2>&1 | tee logs/dl_ablation_$(date +%Y%m%d_%H%M%S).log
+# 3. 14- and 42-day treatment windows (heavy)
+python pipeline_overview.py --window-days 14
+python cpu_nested_cv.py --window-days 14 --models coxph,gbsa,rsf
+python dl_nested_cv.py --window-days 14 --models deepsurv,deephit
+python pipeline_overview.py --window-days 42
+python cpu_nested_cv.py --window-days 42 --models coxph,gbsa,rsf
+python dl_nested_cv.py --window-days 42 --models deepsurv,deephit
 
-{ time PYTHONUNBUFFERED=1 python ablation.py --models coxph,gbsa,rsf --runner cpu --max-parallel 32; } 2>&1 | tee logs/cpu_ablation_$(date +%Y%m%d_%H%M%S).log
+# 4. GENIE BPC external cohort
+python -m genie_validation.build
+
+# 5. Fixed-model predictions for calibration and the 180-day imaging cohort
+python -m analyses.common.horizon_predictions
+python -m analyses.cohort_selection.eligibility_inputs
+
+# 6. Added model fits on the original outer folds (heavy)
+python -m analyses.common.survival --fit ref_mlot1_ca15_3
+python -m analyses.common.survival --fit gbsa_no_line_missingness
+python -m analyses.common.survival --fit gbsa_site_count
+
+# 7. Patient-bootstrap intervals (heavy)
+python -m analyses.common.ibs_bootstrap
+python -m analyses.common.primary_bootstrap
+
+# 8. Calibration and external evaluation (heavy)
+python -m analyses.calibration
+python -m analyses.external_validation
+python -m analyses.pooled_calibration
+
+# 9. Cohort-selection sensitivity analyses (heavy: qc_refit, qc_refit_eval)
+python -m analyses.cohort_selection.imaging_eligibility
+python -m analyses.cohort_selection.qc_sensitivity
+python -m analyses.cohort_selection.qc_late_start
+python -m analyses.cohort_selection.qc_refit
+python -m analyses.cohort_selection.qc_refit_eval
+python -m analyses.cohort_selection.bpc_agreement_pre_qc
+
+# 10. Figures, manuscript_data.txt and extended_data.txt
+python analyses/calibration_figures.py
+python manuscript.py

@@ -6,7 +6,6 @@ import pandas as pd
 from .base import ModalityFrame
 from ..utils import filter_and_sort_input
 
-LINE_START_WINDOW_DAYS = 28
 SURGERY_RECEIVED_IN_LINE_COL = "RECEIVED_SURGERY"
 RADIATION_RECEIVED_IN_LINE_COL = "RECEIVED_RADIATION_THERAPY"
 SURGERY_PLANNED_IN_LINE_COL = "PLANNED_SURGERY"
@@ -76,7 +75,7 @@ def build_local_treatment_features(ctx) -> ModalityFrame:
         r_dates = radiation_dates.get(pid, [])
         for _, line_row in patient_lines.iterrows():
             line_start = int(line_row["LINE_START"])
-            planned_end = line_start + LINE_START_WINDOW_DAYS + 1
+            planned_end = line_start + ctx.window_days + 1
             line_end = line_row.get("EVENT_DAY")
             line_end_int = int(line_end) if pd.notna(line_end) else None
             records.append(

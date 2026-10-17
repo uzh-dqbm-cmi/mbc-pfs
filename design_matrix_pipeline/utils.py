@@ -17,6 +17,7 @@ def filter_and_sort_input(
     The returned dataframe is sorted by ``PATIENT_ID`` and, when available,
     ``START_DATE``.
     """
+
     out = df.copy()
     out.columns = [c.strip().upper().replace(" ", "_") for c in out.columns]
     if patient_ids is not None:

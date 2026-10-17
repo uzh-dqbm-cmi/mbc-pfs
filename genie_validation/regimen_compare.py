@@ -295,7 +295,7 @@ def run(outdir: Path = OUTDIR, exclude_agents: FrozenSet[str] = frozenset()) -> 
 def main() -> None:
     import argparse
 
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         "--exclude-investigative", action="store_true",
         help="drop lines whose regimen contains INVESTIGATIVE (established regimens only)",

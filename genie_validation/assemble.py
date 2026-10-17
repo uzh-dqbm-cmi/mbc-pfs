@@ -52,12 +52,12 @@ def build_design_matrix(
             f"  missing: {sorted(expected - produced)}\n"
             f"  extra:   {sorted(produced - expected)}"
         )
-    audited = {m.feature for m in all_mappings}
-    if audited != expected:
+    mapped = {m.feature for m in all_mappings}
+    if mapped != expected:
         raise ValueError(
-            "Audit/feature mismatch.\n"
-            f"  unaudited: {sorted(expected - audited)}\n"
-            f"  spurious:  {sorted(audited - expected)}"
+            "Feature-mapping mismatch.\n"
+            f"  missing: {sorted(expected - mapped)}\n"
+            f"  extra:   {sorted(mapped - expected)}"
         )
 
     keys = label_df[["PATIENT_ID", "CA_SEQ", "LINE", "LINE_START", TIME_COL, EVENT_COL]].copy()
@@ -75,7 +75,7 @@ def build_design_matrix(
 def build_and_write() -> pd.DataFrame:
     paths.GENIE_DIR.mkdir(parents=True, exist_ok=True)
     label_df = labels.write_labels()
-    design, all_mappings = build_design_matrix(label_df)
+    design, _ = build_design_matrix(label_df)
 
     design.to_csv(paths.DESIGN_MATRIX_OUT, index=False)
     with open(paths.FEATURES_DICT_OUT, "w", encoding="utf-8") as handle:

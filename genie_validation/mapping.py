@@ -9,7 +9,7 @@ import pandas as pd
 
 @dataclass(frozen=True)
 class FeatureMapping:
-    """One row of the feature-mapping audit."""
+    """Describe how one MSK feature is built from GENIE data."""
 
     feature: str  # MSK design-matrix column name
     group: str  # MSK modality (features_dict key)
@@ -18,11 +18,6 @@ class FeatureMapping:
     transform: str  # short human description of the derivation
     status: str  # "mapped" | "empty" | "constant"
 
-MARKER_TO_GENIE_TEST: Dict[str, Optional[str]] = {
-    "CA15_3": "CA15-3",
-    "CEA": None,  # not measured in GENIE BPC BrCa
-}
-MARKER_CUTOFF = {"CA15_3": 30.0, "CEA": 5.0}
 
 MSK_BODY_PARTS = ["CHEST", "ABDOMEN", "PELVIS", "HEAD", "OTHER"]
 SCAN_SITE_TO_BODY_PART: Dict[str, Set[str]] = {
@@ -160,10 +155,6 @@ def line_agent_suffixes(drugs: object) -> Optional[Set[str]]:
             return None
         suffixes.add(mapped)
     return suffixes if suffixes else None
-
-def normalize_drug(name: object) -> str:
-    return str(name).strip().upper()
-
 
 AGENT_SALT_WORDS: Set[str] = {
     "HCL", "HYDROCHLORIDE", "DIHYDROCHLORIDE", "MESYLATE", "TARTRATE", "ACETATE",

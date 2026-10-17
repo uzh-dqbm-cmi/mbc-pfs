@@ -7,7 +7,15 @@ from .base import ModalityFrame
 import numpy as np
 from typing import Dict, List
 
-from config import PATIENT_ID_COL, LINE_COL, START_DATE_COL
+from config import (
+    LINE_COL,
+    MARKER_LONG_WINDOW_DAYS,
+    MARKER_SHORT_WINDOW_DAYS,
+    MARKER_TAU_LONG,
+    MARKER_TAU_SHORT,
+    PATIENT_ID_COL,
+    START_DATE_COL,
+)
 
 TUMOR_MARKER_FILE = "data_timeline_tumor_markers.tsv"
 TEST_COL = "TEST"
@@ -152,9 +160,6 @@ def build_tumor_marker_features(ctx) -> ModalityFrame:
     tumor_markers["_ROW_ID"] = np.arange(tumor_markers.shape[0], dtype=int)
     tumor_markers = filter_and_sort_input(tumor_markers, ctx.type_specific_patients)
 
-    short_window = int(ctx.config["MARKER_SHORT_WINDOW_DAYS"])
-    long_window = int(ctx.config["MARKER_LONG_WINDOW_DAYS"])
-
     # filter out only CEA and CA15-3 results
     cols = [PATIENT_ID_COL, START_DATE_COL, TEST_COL, RESULT_COL, "_ROW_ID"]
     # if there is NA in any of these columns, create a warning, then drop
@@ -184,10 +189,10 @@ def build_tumor_marker_features(ctx) -> ModalityFrame:
         tumor_markers=tumor_markers,
         patient_lot_info=ctx.patient_lot_info,
         test_map=test_map,
-        short_window=short_window,
-        long_window=long_window,
-        tau_short=float(ctx.config["MARKER_TAU_SHORT"]),
-        tau_long=float(ctx.config["MARKER_TAU_LONG"]),
+        short_window=MARKER_SHORT_WINDOW_DAYS,
+        long_window=MARKER_LONG_WINDOW_DAYS,
+        tau_short=MARKER_TAU_SHORT,
+        tau_long=MARKER_TAU_LONG,
     )
 
     features = _impute_tumor_marker_features(features)

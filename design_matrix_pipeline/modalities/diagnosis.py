@@ -16,6 +16,7 @@ DIAG_COLUMNS = [
     "CANCER_SITE_SUBSITE",
 ]
 TOPK_DIAG = 3
+TOP_CATEGORY_COLUMNS = ["HISTOLOGIC", "CANCER_SITE_SUBSITE"]
 SUMMARY_UNKNOWN_CATEGORY = "UNKNOWN"
 SUMMARY_CATEGORY_RULES = [
     ("IN_SITU", ("in situ",)),
@@ -25,9 +26,15 @@ SUMMARY_CATEGORY_RULES = [
 ]
 
 
-def _limit_top_categories(df: pd.DataFrame, column: str, topk: int) -> None:
+def top_categories(df: pd.DataFrame) -> dict[str, pd.Index]:
+    return {
+        column: df[column].fillna("OTHER").value_counts().nlargest(TOPK_DIAG).index
+        for column in TOP_CATEGORY_COLUMNS
+    }
+
+
+def _limit_categories(df: pd.DataFrame, column: str, top_values: pd.Index) -> None:
     series = df[column].fillna("OTHER")
-    top_values = series.value_counts().nlargest(topk).index
     df[column] = series.where(series.isin(top_values), "OTHER")
 
 
@@ -72,8 +79,13 @@ def build_diagnosis_features(ctx) -> ModalityFrame:
     diag["CLINICAL_GROUP"] = _collapse_group_substages(diag["CLINICAL_GROUP"])
     diag["PATH_GROUP"] = _collapse_group_substages(diag["PATH_GROUP"])
 
-    for column in ["HISTOLOGIC", "CANCER_SITE_SUBSITE"]:
-        _limit_top_categories(diag, column, TOPK_DIAG)
+    categories = (
+        top_categories(diag)
+        if ctx.diagnosis_categories is None
+        else ctx.diagnosis_categories
+    )
+    for column in TOP_CATEGORY_COLUMNS:
+        _limit_categories(diag, column, categories[column])
 
     diag_encoded = pd.get_dummies(
         diag,

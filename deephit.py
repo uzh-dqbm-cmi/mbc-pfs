@@ -18,38 +18,27 @@ import os
 import warnings
 from copy import deepcopy
 from pathlib import Path
-from typing import Tuple
 
+import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
-
-from config import DEVICE, PATIENCE
-from utils import (
-    EVAL_HORIZONS,
-    eval_model,
-    evaluate_lot_and_stage_metrics,
-    save_eval_metrics,
-    save_full_survival_curves,
-)
-
-MODEL_NAME = "DeepHit"
-from copy import deepcopy
-from pathlib import Path
-
-import numpy as np
 import torch.nn as nn
 from pycox.models import DeepHitSingle
 from pycox.models.data import pair_rank_mat
 from pycox.preprocessing.label_transforms import LabTransDiscreteTime
 from torch.utils.data import DataLoader
 
-from config import ADMIN_CENSOR_DAYS
+from config import ADMIN_CENSOR_DAYS, DEVICE, EVAL_HORIZONS, PATIENCE
 from model_setup import _seed_reproducibly
 from preprocess import preprocess_df
+from utils import (
+    eval_model,
+    evaluate_lot_and_stage_metrics,
+    save_eval_metrics,
+    save_full_survival_curves,
+)
 
 
 def train_deephit(
@@ -60,14 +49,13 @@ def train_deephit(
     config: dict,
     outer: bool,
     outdir: Path,
-    run_ablation=bool,
-):
+    run_ablation: bool,
+) -> dict:
     if outdir is None:
         raise ValueError("outdir must be provided for train_deephit.")
     os.makedirs(outdir, exist_ok=True)
 
     _seed_reproducibly(int(config["seed"]))
-    RNG = np.random.default_rng(config["seed"])
 
     splits = preprocess_df(
         train_idx=train_idx,
@@ -76,56 +64,23 @@ def train_deephit(
         design_matrix=design_matrix,
         ignore_prefix=config.get("ignore_prefix"),
     )
-    num_time_steps = config["num_time_steps"]
-    if num_time_steps == 0:
-        event_mask = splits["event_train_arr"].copy().astype(bool)
-        event_times = np.unique(splits["time_train_arr"][event_mask])
-        if event_times.size == 0:
-            raise ValueError("No observed events in training split; cannot discretize.")
-        time_grid_train_np = event_times.astype(float)
-
-        def _discretize(
-            durations: np.ndarray, events: np.ndarray
-        ) -> Tuple[np.ndarray, np.ndarray]:
-            durations = np.asarray(durations, dtype=float)
-            events = np.asarray(events, dtype=int)
-            idx = np.searchsorted(time_grid_train_np, durations, side="right") - 1
-            idx = np.clip(idx, 0, len(time_grid_train_np) - 1)
-            adjusted_events = events.copy()
-            adjusted_events[durations > time_grid_train_np[-1]] = 0
-            return idx.astype(np.int64), adjusted_events.astype(np.int32)
-
-        time_train_discrete_np, event_train_discrete_np = _discretize(
+    with warnings.catch_warnings():
+        # PyCox emits a noisy warning when quantile cuts are duplicated; swallow it.
+        warnings.filterwarnings(
+            "ignore",
+            message=r"cuts are not unique, continue with .*",
+            category=UserWarning,
+        )
+        label_transform = LabTransDiscreteTime(
+            config["num_time_steps"], scheme="quantiles"
+        )
+        time_train_discrete_np, event_train_discrete_np = label_transform.fit_transform(
             splits["time_train_arr"], splits["event_train_arr"]
         )
-        time_val_discrete_np, event_val_discrete_np = _discretize(
-            splits["time_val_arr"], splits["event_val_arr"]
-        )
-        time_test_discrete_np, event_test_discrete_np = _discretize(
-            splits["time_test_arr"], splits["event_test_arr"]
-        )
-    else:
-        with warnings.catch_warnings():
-            # PyCox emits a noisy warning when quantile cuts are duplicated; swallow it.
-            warnings.filterwarnings(
-                "ignore",
-                message=r"cuts are not unique, continue with .*",
-                category=UserWarning,
-            )
-            label_transform = LabTransDiscreteTime(num_time_steps, scheme="quantiles")
-            (
-                time_train_discrete_np,
-                event_train_discrete_np,
-            ) = label_transform.fit_transform(
-                splits["time_train_arr"], splits["event_train_arr"]
-            )
-        time_val_discrete_np, event_val_discrete_np = label_transform.transform(
-            splits["time_val_arr"], splits["event_val_arr"]
-        )
-        time_test_discrete_np, event_test_discrete_np = label_transform.transform(
-            splits["time_test_arr"], splits["event_test_arr"]
-        )
-        time_grid_train_np = label_transform.cuts
+    time_val_discrete_np, event_val_discrete_np = label_transform.transform(
+        splits["time_val_arr"], splits["event_val_arr"]
+    )
+    time_grid_train_np = label_transform.cuts
 
     output_num_time_steps = len(time_grid_train_np)
 
@@ -137,12 +92,8 @@ def train_deephit(
     X_val = torch.tensor(splits["X_val_np"], dtype=torch.float32, device=DEVICE)
     time_val = torch.tensor(time_val_discrete_np, dtype=torch.int64, device=DEVICE)
     event_val = torch.tensor(event_val_discrete_np, dtype=torch.int32, device=DEVICE)
-    X_test = torch.tensor(splits["X_test_np"], dtype=torch.float32, device=DEVICE)
-    time_test = torch.tensor(time_test_discrete_np, dtype=torch.int64, device=DEVICE)
-    event_test = torch.tensor(event_test_discrete_np, dtype=torch.int32, device=DEVICE)
     train_data = list(zip(X_train, time_train, event_train))
     val_data = list(zip(X_val, time_val, event_val))
-    test_data = list(zip(X_test, time_test, event_test))
 
     num_input_features = X_train.size(1)
 
@@ -159,16 +110,6 @@ def train_deephit(
             prev = h
         layers.append(nn.Linear(prev, out_dim))
         return nn.Sequential(*layers)
-
-    class _HazardProjection(nn.Module):
-        def __init__(self, base_module: nn.Module, column_idx: int):
-            super().__init__()
-            self.base_module = base_module
-            self.column_idx = int(column_idx)
-
-        def forward(self, x: torch.Tensor) -> torch.Tensor:
-            logits = self.base_module(x)
-            return logits[:, self.column_idx : self.column_idx + 1]
 
     batch_size = config["batch_size"]
 
@@ -363,8 +304,25 @@ def train_deephit(
                     "best_epoch_index": best_epoch_index,
                     "train_epoch_losses": train_epoch_losses,
                     "val_epoch_losses": val_epoch_losses,
+                    "numeric_cols": splits["numeric_cols"],
+                    "binary_cols": splits["binary_cols"],
+                    "feature_cols": splits["feature_cols"],
+                    "time_grid": time_grid_train_np,
+                    "interpolation_factor": interpolation_factor,
                 },
                 os.path.join(outdir, "model.pt"),
+            )
+            joblib.dump(
+                {
+                    "model_type": "deephit",
+                    "preprocessor": splits["preprocessor"],
+                    "numeric_cols": splits["numeric_cols"],
+                    "binary_cols": splits["binary_cols"],
+                    "feature_cols": splits["feature_cols"],
+                    "config": config,
+                    "model_pt": "model.pt",
+                },
+                os.path.join(outdir, "preprocess.joblib"),
             )
 
         return metrics

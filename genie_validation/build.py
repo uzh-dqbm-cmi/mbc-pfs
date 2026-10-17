@@ -4,7 +4,7 @@ from . import assemble
 
 
 def main() -> None:
-    print("Building GENIE validation design matrix (clean-room)...")
+    print("Building GENIE validation design matrix...")
     assemble.build_and_write()
     print("Done.")
 

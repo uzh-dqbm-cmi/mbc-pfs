@@ -1,0 +1,34 @@
+Analysis environment specification
+
+Python: 3.13.5 (current analysis environment). The Python minor version used for the
+original model-training runs was not recorded; package versions below are the pinned versions
+used for all reported analyses and for the revision.
+
+Random seed: 42 (config.RANDOM_STATE), used for the nested cross-validation splits, model
+initialization where applicable, SHAP background sampling, and all bootstrap resampling
+(1,000 patient-level resamples, seed 42, in the revision).
+
+Cross-validation: 5 outer x 3 inner folds, stratified by HR/HER2 subtype and by having at
+least one line administratively censored at 2 years; all lines of a patient in the same fold.
+
+Hardware: CPU (scikit-survival, lifelines); PyTorch models (DeepSurv, DeepHit) on CPU/MPS.
+
+Pinned packages (identical to requirements.txt):
+attrs==25.3.0
+joblib==1.5.1
+lifelines==0.30.0
+matplotlib==3.10.3
+numba==0.61.2
+numpy==2.2.6
+pandas==2.3.0
+patsy==1.0.1
+pycox==0.3.0
+scikit-learn==1.6.1
+scikit-survival==0.26.0
+scipy==1.15.3
+shap==0.50.0
+statsmodels==0.14.4
+SurvivalEVAL==0.4.3
+tabulate==0.9.0
+torch==2.7.1
+torchtuples==0.2.2

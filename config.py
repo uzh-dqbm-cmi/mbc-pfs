@@ -1,4 +1,5 @@
 import json
+import sys
 from pathlib import Path
 from typing import Dict, List
 
@@ -8,6 +9,7 @@ except ModuleNotFoundError:  # pragma: no cover
     torch = None
 
 RESULTS_PATH = Path("results")
+FIGURES_PATH = Path("manuscript/figures")
 PATIENCE = 50
 
 DEVICE = "cpu"
@@ -16,7 +18,7 @@ if torch is not None:
         DEVICE = "cuda"
     elif torch.backends.mps.is_available():
         DEVICE = "mps"
-print(f"Using device: {DEVICE}")
+print(f"Using device: {DEVICE}", file=sys.stderr)
 
 MODALITY_GROUPS: Dict[str, List[str]] = {
     "Treatment": ["TREATMENT", "LOCAL_TREATMENT"],
@@ -30,9 +32,16 @@ MODALITY_GROUPS: Dict[str, List[str]] = {
     "Radiology": ["TUMOR_SITES", "CANCER_PRESENCE"],
 }
 
+DESIGN_MATRIX_PATH = Path("data") / "design_matrix.csv"
+FEATURES_DICT_PATH = Path("data") / "features_dict.json"
+MSK_DATA_DIR = Path("data/msk_chord_2024")
+CANCER_TYPE = "BREAST"
+
 # additionally, read features_dict.json to group survival-pattern features
 # this can only be used after features_dict.json is generated
-features_dict = json.load(open(Path("data") / "features_dict.json"))
+features_dict = (
+    json.load(open(FEATURES_DICT_PATH)) if FEATURES_DICT_PATH.exists() else {}
+)
 surv_pattern_suffixes = (
     "_MISSING",
     "_DAY",
@@ -50,30 +59,18 @@ surv_patterns = list(dict.fromkeys(surv_patterns))
 MODALITY_GROUPS["Surveillance Patterns"] = surv_patterns
 
 RANDOM_STATE = 42
-FIGURES_PATH = Path("figures")
-VAL_SIZE = 0.15
-TEST_SIZE = 0.15
 ADMIN_CENSOR_DAYS = 365 * 2
+LINE_START_WINDOW_DAYS = 28
+DAY_SPLIT = 365
+MONTH_DAYS = 30.437
+CALIBRATION_HORIZONS = (180, 365, 730)
+MIN_PFS_DAYS = 28
 EVAL_HORIZONS = list(range(90, 2 * 365 + 1, 30))
 EVAL_HORIZONS += [365, 730]
 
-# Shared PFS time binning (edges are inclusive of the lower bound, right-open)
-PFS_TIME_BIN_EDGES = (0, 90, 180, 365, 730, float("inf"))
-PFS_TIME_BIN_LABELS = (
-    "<90d",
-    "90-<180d",
-    "180-<365d",
-    "365-<730d",
-    ">=730d",
-)
 
 # Explainability / evaluation constants
 SHAP_GBSA_BACKGROUND = 200
-SHAP_GBSA_MAX_SAMPLES = None  # cap SHAP evaluation points to control runtime
-SHAP_DEEPSURV_BACKGROUND = 500  # number of background samples for DeepSurv/GBSA SHAP
-SHAP_DEEPSURV_MAX_SAMPLES = None
-SHAP_DEEPHIT_BACKGROUND = 300
-SHAP_DEEPHIT_MAX_SAMPLES = 512
 
 # Aggregation windows (for building the design matrix)
 # Tumor markers (numeric):
@@ -92,13 +89,7 @@ ECOG_EVER_GE2_WINDOW = 180
 # Constants for column names
 PATIENT_ID_COL = "PATIENT_ID"
 LINE_COL = "LINE"
-LINE_START_COL = "LINE_START"
 START_DATE_COL = "START_DATE"
-
-
-DESIGN_MATRIX_PATH = Path("data") / "design_matrix.csv"
-FEATURES_DICT_PATH = Path("data") / "features_dict.json"
-
 
 EVENT_COL = "PFS_EVENT"
 TIME_COL = "PFS_TIME_DAYS"

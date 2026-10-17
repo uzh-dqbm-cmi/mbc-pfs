@@ -17,6 +17,7 @@ import json
 import warnings
 from pathlib import Path
 
+import joblib
 import numpy as np
 import pandas as pd
 from sksurv.linear_model import CoxPHSurvivalAnalysis
@@ -36,8 +37,6 @@ warnings.filterwarnings(
     message="The first time coordinate is not 0.*",
     category=UserWarning,
 )
-
-MODEL_NAME = "CoxPH"
 
 
 def train_coxph(
@@ -87,6 +86,21 @@ def train_coxph(
         )
         metrics["lot_metrics"] = lot_metrics
         metrics["hr_her2_metrics"] = hr_her2_metrics
+
+        outdir.mkdir(parents=True, exist_ok=True)
+        joblib.dump(model, outdir / "model.joblib")
+        joblib.dump(
+            {
+                "model_type": "coxph",
+                "model": model,
+                "preprocessor": splits["preprocessor"],
+                "numeric_cols": splits["numeric_cols"],
+                "binary_cols": splits["binary_cols"],
+                "feature_cols": splits["feature_cols"],
+                "config": config,
+            },
+            outdir / "model_bundle.joblib",
+        )
 
         save_eval_metrics(
             metrics=metrics,
