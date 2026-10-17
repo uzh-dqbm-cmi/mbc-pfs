@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Iterable
+
 import pandas as pd
 
 from .base import ModalityFrame
 from ..utils import filter_and_sort_input
-
-LINE_START_WINDOW_DAYS = 28
-LINE_RECEIVED_GRACE_DAYS = 28
 
 
 def _normalize_token(series: pd.Series) -> pd.Series:
@@ -14,7 +14,7 @@ def _normalize_token(series: pd.Series) -> pd.Series:
     return tokens
 
 
-def _build_top_agent_lookup(treatment: pd.DataFrame) -> dict[str, set[str]]:
+def build_top_agent_lookup(treatment: pd.DataFrame) -> dict[str, set[str]]:
     allowed_mask = treatment["AGENT"].notna()
     agent_candidates = treatment.loc[allowed_mask, ["TREATMENT", "AGENT"]]
     if agent_candidates.empty:
@@ -47,21 +47,23 @@ def _overlaps(
     return (start <= interval_end) and (stop >= interval_start)
 
 
-def build_treatment_features(ctx) -> ModalityFrame:
-    treatment = pd.read_csv(
-        ctx.data_dir / "data_timeline_treatment.tsv", sep="\t", dtype=str
-    )
-    treatment = filter_and_sort_input(
-        treatment, patient_ids=ctx.patient_lot_info["PATIENT_ID"].unique()
-    )
+def load_treatment(data_dir: Path, patient_ids: Iterable[str]) -> pd.DataFrame:
+    treatment = pd.read_csv(data_dir / "data_timeline_treatment.tsv", sep="\t", dtype=str)
+    treatment = filter_and_sort_input(treatment, patient_ids=patient_ids)
     treatment["TREATMENT"] = _normalize_token(treatment["SUBTYPE"])
     treatment["AGENT"] = _normalize_token(treatment["AGENT"])
     treatment["START_DATE"] = treatment["START_DATE"].astype(int)
     treatment["STOP_DATE"] = pd.to_numeric(treatment.get("STOP_DATE"), errors="coerce")
     treatment["STOP_DATE"] = treatment["STOP_DATE"].fillna(treatment["START_DATE"] + 1)
     treatment["STOP_DATE"] = treatment["STOP_DATE"].astype(int)
+    return treatment
 
-    top_agents = _build_top_agent_lookup(treatment)
+
+def build_treatment_features(ctx) -> ModalityFrame:
+    treatment = load_treatment(ctx.data_dir, ctx.patient_lot_info["PATIENT_ID"].unique())
+    top_agents = (
+        build_top_agent_lookup(treatment) if ctx.top_agents is None else ctx.top_agents
+    )
 
     lot_info = ctx.patient_lot_info[
         ["PATIENT_ID", "LINE", "LINE_START", "EVENT_DAY"]
@@ -75,9 +77,8 @@ def build_treatment_features(ctx) -> ModalityFrame:
         for _, line_row in lines.iterrows():
             line_start = int(line_row["LINE_START"])
             event_day_int = int(line_row.get("EVENT_DAY"))
-            planned_end = line_start + LINE_START_WINDOW_DAYS
-            # if it's received shortly before line ends, does not count it
-            received_end = event_day_int - LINE_START_WINDOW_DAYS
+            planned_end = line_start + ctx.window_days
+            received_end = event_day_int - ctx.window_days
 
             features: dict[str, int | str] = {
                 "PATIENT_ID": pid,

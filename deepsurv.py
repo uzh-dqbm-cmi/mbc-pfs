@@ -1,24 +1,10 @@
-# ---
-# jupyter:
-#   jupytext:
-#     formats: ipynb,py:percent
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.17.2
-#   kernelspec:
-#     display_name: .venv
-#     language: python
-#     name: python3
-# ---
-# %%
 from __future__ import annotations
 
 import os
 from copy import deepcopy
 from pathlib import Path
 
+import joblib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -37,9 +23,6 @@ from utils import (
     save_full_survival_curves,
 )
 
-MODEL_NAME = "DeepSurv"
-
-
 def train_deepsurv(
     train_idx: np.ndarray,
     val_idx: np.ndarray,
@@ -50,23 +33,10 @@ def train_deepsurv(
     outdir: Path,
     run_ablation: bool,
 ) -> dict:
-    """
-    Trains DeepSurv model and evaluates it.
-
-    Args:
-        train_idx (np.ndarray): Indices for training data.
-        test_idx (np.ndarray): Indices for testing data.
-        design_matrix (pd.DataFrame): The design matrix containing features.
-        config (dict): Configuration dictionary.
-
-    Returns:
-        dict: Evaluation metrics.
-    """
     if outdir is None:
         raise ValueError("outdir must be provided for train_deepsurv.")
 
     _seed_reproducibly(int(config["seed"]))
-    RNG = np.random.default_rng(config["seed"])
     os.makedirs(outdir, exist_ok=True)
     splits = preprocess_df(
         train_idx=train_idx,
@@ -86,16 +56,8 @@ def train_deepsurv(
     X_val = torch.tensor(splits["X_val_np"], dtype=torch.float32, device=DEVICE)
     time_val = torch.tensor(splits["time_val_arr"], dtype=torch.float32, device=DEVICE)
     event_val = torch.tensor(splits["event_val_arr"], dtype=torch.int32, device=DEVICE)
-    X_test = torch.tensor(splits["X_test_np"], dtype=torch.float32, device=DEVICE)
-    time_test = torch.tensor(
-        splits["time_test_arr"], dtype=torch.float32, device=DEVICE
-    )
-    event_test = torch.tensor(
-        splits["event_test_arr"], dtype=torch.int32, device=DEVICE
-    )
     train_data = list(zip(X_train, time_train, event_train))
     val_data = list(zip(X_val, time_val, event_val))
-    test_data = list(zip(X_test, time_test, event_test))
 
     num_input_features = X_train.size(1)
 
@@ -135,7 +97,7 @@ def train_deepsurv(
         shuffle=True,
         generator=torch_generator,
         num_workers=0,
-    )  # shuffling for minibatch gradient descent
+    )
     val_loader = DataLoader(val_data, batch_size, shuffle=False, num_workers=0)
     train_epoch_losses: list[float] = []
     val_epoch_losses: list[float] = []
@@ -290,8 +252,24 @@ def train_deepsurv(
                     "best_epoch_index": best_epoch_index,
                     "train_epoch_losses": train_epoch_losses,
                     "val_epoch_losses": val_epoch_losses,
+                    "numeric_cols": splits["numeric_cols"],
+                    "binary_cols": splits["binary_cols"],
+                    "feature_cols": splits["feature_cols"],
+                    "time_grid": time_grid_train_np,
                 },
                 os.path.join(outdir, "model.pt"),
+            )
+            joblib.dump(
+                {
+                    "model_type": "deepsurv",
+                    "preprocessor": splits["preprocessor"],
+                    "numeric_cols": splits["numeric_cols"],
+                    "binary_cols": splits["binary_cols"],
+                    "feature_cols": splits["feature_cols"],
+                    "config": config,
+                    "model_pt": "model.pt",
+                },
+                os.path.join(outdir, "preprocess.joblib"),
             )
 
         return metrics

@@ -13,7 +13,6 @@ from SurvivalEVAL.Evaluator import SurvivalEvaluator
 
 from config import AUC, C_INDEX, EVAL_HORIZONS
 
-# Silence SurvivalEVAL padding warnings about time grids not starting at 0.
 warnings.filterwarnings(
     "ignore",
     message="The first time coordinate is not 0.*",
@@ -97,8 +96,6 @@ def save_full_survival_curves(
     idx_test_array: np.ndarray,
     filename: str = "surv_test.npz",
 ) -> str:
-    """Persist the complete survival matrix aligned to the provided time grid."""
-
     time_grid = np.asarray(time_grid, dtype=float).reshape(-1)
     surv_test_np = np.asarray(surv_test_np, dtype=float)
     if surv_test_np.shape[0] != idx_test_array.shape[0]:
@@ -145,45 +142,6 @@ def time_dependent_evals(
     float,
     float,
 ]:
-    """
-    Evaluate time-dependent IPCW C-index, Brier scores, and classification metrics.
-
-    Parameters
-    ----------
-    eval_times : Sequence[float]
-        Requested evaluation horizons (in days).
-    time_grid_train_np : np.ndarray
-        Sorted unique event times from the training split (aligns with survival curves).
-    y_train, y_test : np.ndarray
-        Structured Surv arrays describing (event, time).
-    surv_test_np : np.ndarray
-        Predicted survival curves (n_test, len(time_grid_train_np)).
-    surv_evaluator : SurvivalEvaluator
-        Helper for Brier/IBS calculations.
-    progression_threshold : float, default=0.5
-        Risk cut-off for classifying a sample as progressed (> threshold -> progressed).
-
-    Returns
-    -------
-    resolved_eval_times : List[float]
-        Actual time-grid points used for evaluation.
-    ipcw : List[float]
-        IPCW-adjusted C-index at each horizon.
-    brier_score : List[float]
-        Brier score at each horizon.
-    precision_at_threshold : List[float]
-        Precision achieved when classifying risk > progression_threshold as progressed.
-    recall_at_threshold : List[float]
-        Recall achieved under the same threshold.
-    IBS : float
-        Integrated Brier score.
-    p_value : float
-        D-calibration p-value.
-    weighted_MAE_margin : float
-        Weighted MAE under the Margin method (truncated at 365 days).
-    weighted_MAE_PO : float
-        Weighted MAE under pseudo-observation method (truncated at 365 days).
-    """
     resolved_eval_times: List[float] = []
     ipcw: List[float] = []
     brier_score: List[float] = []
@@ -253,12 +211,10 @@ def compute_time_dependent_auc(
     y_test: np.ndarray,
     eval_horizons: Sequence[float],
 ) -> Dict[str, object]:
-    """Compute td-AUC curve and align it to requested evaluation horizons."""
     censoring_estimator = CensoringDistributionEstimator().fit(y_train)
     censoring_surv = censoring_estimator.predict_proba(time_grid_train_np)
     censoring_valid_mask = censoring_surv > 0.0
     censoring_last_time = float(np.max(time_grid_train_np[censoring_valid_mask]))
-    # print(f"Censoring survival support ends at time: {censoring_last_time}")
 
     event_mask = y_test["event"].astype(bool)
     if not np.any(event_mask):
@@ -329,9 +285,7 @@ def compute_time_dependent_auc(
         horizon_times.append(resolved_time)
         horizon_values.append(float(auc_values[idx]))
         if np.isnan(auc_values[idx]):
-            # attempt to evaluate at this horizon directly
             try:
-                # `idx` is relative to `eval_time_grid` / `risk_window`, not the full time grid.
                 risk_at_time = risk_window[:, idx]
                 auc_value, _ = cumulative_dynamic_auc(
                     y_train,
@@ -362,16 +316,6 @@ def evaluate_lot_and_stage_metrics(
     time_grid_train_np: np.ndarray,
     eval_horizons: Sequence[float],
 ) -> Tuple[Dict[str, Dict[str, object]], Dict[str, Dict[str, object]]]:
-    """
-    Evaluate downstream metrics for Line 1 vs. Line 2+ and HR/HER2 subgroups.
-
-    Returns
-    -------
-    lot_metrics : Dict[str, Dict[str, object]]
-        Metrics for LINE_1 and LINE_2_PLUS cohorts (if present).
-    hr_her2_metrics : Dict[str, Dict[str, object]]
-        Metrics for each observed HR/HER2 combination (HR+/-, HER2+/-).
-    """
     lot_metrics: Dict[str, Dict[str, object]] = {}
     hr_her2_metrics: Dict[str, Dict[str, object]] = {}
 

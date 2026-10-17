@@ -1,20 +1,6 @@
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#       jupytext_version: 1.17.2
-#   kernelspec:
-#     display_name: msk
-#     language: python
-#     name: msk
-# ---
-
 from pathlib import Path
 
-# %%
+import joblib
 import numpy as np
 import pandas as pd
 from sksurv.ensemble import RandomSurvivalForest
@@ -28,10 +14,7 @@ from utils import (
     save_full_survival_curves,
 )
 
-MODEL_NAME = "RSF"
 
-
-# %%
 def train_rsf(
     train_idx: np.ndarray,
     val_idx: np.ndarray,
@@ -90,6 +73,21 @@ def train_rsf(
             )
             metrics["lot_metrics"] = lot_metrics
             metrics["hr_her2_metrics"] = hr_her2_metrics
+
+            outdir.mkdir(parents=True, exist_ok=True)
+            joblib.dump(model, outdir / "model.joblib")
+            joblib.dump(
+                {
+                    "model_type": "rsf",
+                    "model": model,
+                    "preprocessor": splits["preprocessor"],
+                    "numeric_cols": splits["numeric_cols"],
+                    "binary_cols": splits["binary_cols"],
+                    "feature_cols": splits["feature_cols"],
+                    "config": config,
+                },
+                outdir / "model_bundle.joblib",
+            )
 
             save_eval_metrics(
                 metrics=metrics,

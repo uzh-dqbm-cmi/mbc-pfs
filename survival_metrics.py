@@ -10,7 +10,6 @@ def km_curve(
     *,
     label: str | None = None,
 ) -> tuple[np.ndarray, np.ndarray, KaplanMeierFitter]:
-    """Fit a KM curve and return (times, survival, kmf)."""
     durations = np.asarray(durations, dtype=float)
     events = np.asarray(events, dtype=int)
     if durations.size == 0:
@@ -30,7 +29,6 @@ def rmst_from_curve(
     survival: np.ndarray,
     tau: float,
 ) -> float:
-    """Compute RMST by integrating the survival curve up to tau."""
     tau = float(tau)
     if not np.isfinite(tau) or tau <= 0:
         return float("nan")
@@ -75,7 +73,6 @@ def mae_pred_vs_km(
     km_index: np.ndarray,
     km_values: np.ndarray,
 ) -> float:
-    """Compute MAE between a predicted curve and a KM curve on the time grid."""
     km_index = np.asarray(km_index, dtype=float)
     km_values = np.asarray(km_values, dtype=float)
     if km_index.size == 0 or km_values.size == 0:

@@ -6,7 +6,7 @@ from typing import List, Tuple
 import pandas as pd
 
 from config import EVENT_COL, TIME_COL
-from . import features, labels, mapping, paths
+from . import audit, features, labels, mapping, paths
 
 
 def _load_context(label_df: pd.DataFrame) -> features.FeatureContext:
@@ -80,6 +80,7 @@ def build_and_write() -> pd.DataFrame:
     design.to_csv(paths.DESIGN_MATRIX_OUT, index=False)
     with open(paths.FEATURES_DICT_OUT, "w", encoding="utf-8") as handle:
         json.dump(paths.load_msk_feature_groups(), handle, indent=2)
+    audit.write_audit(all_mappings, design, label_df)
 
     print(f"  wrote {paths.DESIGN_MATRIX_OUT} {design.shape}")
     print(f"  patients={design['PATIENT_ID'].nunique()} lines={len(design)}")

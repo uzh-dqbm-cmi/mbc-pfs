@@ -9,17 +9,17 @@ import numpy as np
 import pandas as pd
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-from lifelines import KaplanMeierFitter  # noqa: E402
-from lifelines.statistics import logrank_test  # noqa: E402
-from scipy.stats import chi2_contingency, fisher_exact, mannwhitneyu  # noqa: E402
+import matplotlib.pyplot as plt
+from lifelines import KaplanMeierFitter
+from lifelines.statistics import logrank_test
+from scipy.stats import chi2_contingency, fisher_exact, mannwhitneyu
 
 from config import EVENT_COL, TIME_COL
 from . import labels, mapping as M, paths
 
 OUTDIR = Path("validation_outputs/regimen_overlap")
-EXCLUDED_SUBTYPES = {"BONE TREATMENT"}  # GENIE does not record supportive/bone agents
-PLANNED_WINDOW_DAYS = 28  # same window MSK uses for PLANNED_* (treatment.py)
+EXCLUDED_SUBTYPES = {"BONE TREATMENT"}
+PLANNED_WINDOW_DAYS = 28
 SUFFICIENT_N = 20
 INVESTIGATIVE_AGENTS = frozenset({"INVESTIGATIVE"})
 
@@ -29,7 +29,6 @@ def _regimen_str(reg: FrozenSet[str]) -> str:
 
 
 def build_msk_line_regimens() -> pd.DataFrame:
-    """One row per MSK modelled line with its exact (pre-collapse) agent set."""
     dm = pd.read_csv(paths.MSK_DESIGN_MATRIX)
     dm = dm[dm[EVENT_COL] != -1][
         ["PATIENT_ID", "LINE", "LINE_START", EVENT_COL, TIME_COL]
@@ -76,7 +75,6 @@ def build_msk_line_regimens() -> pd.DataFrame:
 
 
 def build_genie_line_regimens() -> pd.DataFrame:
-    """One row per GENIE candidate line (no regimen filter) with its agent set."""
     g = labels.build_labels(apply_drug_filter=False)
     g["REGIMEN_SET"] = g["REGIMEN_DRUGS"].map(
         lambda s: M.canonical_regimen(str(s).split(","))
@@ -94,7 +92,6 @@ def _event_rate_test(m: pd.DataFrame, g: pd.DataFrame):
     table = [[em, len(m) - em], [eg, len(g) - eg]]
     try:
         _, p, _, _ = chi2_contingency(table)
-        # Fisher is more reliable for small cells
         if min(min(r) for r in table) < 5:
             _, p = fisher_exact(table)
     except Exception:
@@ -154,7 +151,6 @@ def analyze(msk: pd.DataFrame, genie: pd.DataFrame) -> Dict[str, object]:
         ["n_genie", "n_msk"], ascending=False
     ).reset_index(drop=True)
 
-    # Benjamini-Hochberg q-values on the log-rank p among "sufficient" regimens.
     comparison["q_logrank_bh"] = np.nan
     suff = comparison[comparison["sufficient"] & comparison["p_logrank"].notna()]
     if len(suff):
@@ -295,7 +291,7 @@ def run(outdir: Path = OUTDIR, exclude_agents: FrozenSet[str] = frozenset()) -> 
 def main() -> None:
     import argparse
 
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = argparse.ArgumentParser()
     parser.add_argument(
         "--exclude-investigative", action="store_true",
         help="drop lines whose regimen contains INVESTIGATIVE (established regimens only)",

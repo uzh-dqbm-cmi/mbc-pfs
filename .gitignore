@@ -2,14 +2,38 @@
 *.ipynb_checkpoints
 *.ipynb
 __pycache__/
-data/msk_chord_2024/
 .vscode/
 .DS_Store
 *.pt
 *.egg-info
 .pytest_cache/
 .cache/
+.mplconfig/
 logs/
 
+# Data and every file the pipeline writes under data/ (patient-level; never commit)
+data/msk_chord_2024/
 data/genie/
 data/genie_design_matrix.csv
+data/*
+!data/features_dict.json
+!data/feature_groups.json
+!data/feature_display_names.json
+data/rebuttal/
+
+# Outputs
+cv_splits/
+results/
+leakage/
+results_ablation/
+results_window/
+validation_outputs/
+manuscript/
+rebuttal/
+analyses/**
+!analyses/**/
+!analyses/**/*.py
+analysis_data.txt
+manuscript_data.txt
+extended_data.txt
+rebuttal_data.txt

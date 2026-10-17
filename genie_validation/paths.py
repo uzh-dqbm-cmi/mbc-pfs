@@ -1,7 +1,3 @@
-"""Centralised file paths and the MSK feature manifest used as source of truth.
-Ensures GENIE columns contain exactly the same features as MSK.
-"""
-
 from __future__ import annotations
 
 import json
@@ -10,13 +6,11 @@ from typing import Dict, List
 
 import pandas as pd
 
-# --- MSK reference artifacts (trusted) ---
 MSK_DESIGN_MATRIX = Path("data/design_matrix.csv")
 MSK_FEATURES_DICT = Path("data/features_dict.json")
 MSK_DATA_DIR = Path("data/msk_chord_2024")
 MSK_TREATMENT_TIMELINE = MSK_DATA_DIR / "data_timeline_treatment.tsv"
 
-# --- raw GENIE source files ---
 GENIE_DIR = Path("data/genie")
 REGIMEN_FILE = GENIE_DIR / "regimen_cancer_level_dataset.csv"
 CANCER_FILE = GENIE_DIR / "cancer_level_dataset_index.csv"
@@ -28,24 +22,12 @@ PATHOLOGY_FILE = GENIE_DIR / "data_timeline_pathology.txt"
 PANEL_FILE = GENIE_DIR / "cancer_panel_test_level_dataset.csv"
 MUTATIONS_FILE = GENIE_DIR / "data_mutations_extended.txt"
 CNA_FILE = GENIE_DIR / "data_CNA.txt"
-SV_FILE = GENIE_DIR / "data_sv.txt"
 
-# --- outputs (kept inside data/genie/ so they never collide with the
-# distrusted data/genie_design_matrix.csv at the data/ root) ---
 PFS_OUT = GENIE_DIR / "genie_pfs.csv"
 DESIGN_MATRIX_OUT = GENIE_DIR / "genie_design_matrix.csv"
 FEATURES_DICT_OUT = GENIE_DIR / "genie_features_dict.json"
-
-# Identity / label columns carried alongside the feature columns.
-KEY_COLS: List[str] = [
-    "PATIENT_ID",
-    "CA_SEQ",
-    "LINE",
-    "LINE_START",
-    "PFS_TIME_DAYS",
-    "PFS_EVENT",
-    "LINE_SOURCE",
-]
+AUDIT_MD_OUT = GENIE_DIR / "genie_feature_mapping_audit.md"
+AUDIT_CSV_OUT = GENIE_DIR / "genie_feature_mapping_audit.csv"
 
 
 def load_msk_feature_groups() -> Dict[str, List[str]]:

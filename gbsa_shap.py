@@ -2,8 +2,6 @@ from __future__ import annotations
 
 import os
 
-# Determinism: set env vars *before* importing numpy / sklearn to reduce BLAS/OpenMP
-# nondeterminism across runs.
 os.environ.setdefault("PYTHONHASHSEED", "0")
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
@@ -11,7 +9,6 @@ os.environ.setdefault("MKL_NUM_THREADS", "1")
 os.environ.setdefault("VECLIB_MAXIMUM_THREADS", "1")
 os.environ.setdefault("NUMEXPR_NUM_THREADS", "1")
 
-import inspect
 import json
 import random
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -19,9 +16,13 @@ from pathlib import Path
 
 import joblib
 import numpy as np
+import pandas as pd
 import shap
 
-from config import RANDOM_STATE, RESULTS_PATH, SHAP_GBSA_BACKGROUND
+from config import DESIGN_MATRIX_PATH, RANDOM_STATE, RESULTS_PATH, SHAP_GBSA_BACKGROUND
+from cv_config import K_OUTER, MODEL_CONFIGS
+from gbsa import train_gbsa
+from preprocess import preprocess_df
 
 
 def _make_survival_probability_predictor(model: object, target_time: float) -> callable:
@@ -52,44 +53,21 @@ def shap_gbsa(
     outdir: Path,
     target_time: float,
 ) -> None:
-    """Compute and save SHAP values for a trained GBSA model.
-
-    Args:
-        splits: Dictionary containing training and test splits.
-        outdir: Directory to save SHAP values.
-        target_time: If provided, explain predicted survival probability at this time;
-            otherwise explain the raw GBSA risk score.
-    """
-
     X_train_np = splits["X_train_np"]
     X_test_np = splits["X_test_np"]
     feature_names = splits["numeric_cols"] + splits["binary_cols"]
     model = joblib.load(outdir / "model.joblib")
 
-    # Ensure any residual randomness inside SHAP stays stable.
     random.seed(int(RANDOM_STATE))
     np.random.seed(int(RANDOM_STATE))
 
     bg_n = max(1, int(min(SHAP_GBSA_BACKGROUND, X_train_np.shape[0])))
-    kmeans_kwargs = {}
+    rng_state = np.random.get_state()
+    np.random.seed(RANDOM_STATE)
     try:
-        params = inspect.signature(shap.kmeans).parameters
-    except (TypeError, ValueError):
-        params = {}
-    if "random_state" in params:
-        kmeans_kwargs["random_state"] = RANDOM_STATE
-    elif "seed" in params:
-        kmeans_kwargs["seed"] = RANDOM_STATE
-
-    if kmeans_kwargs:
-        background_data = shap.kmeans(X_train_np, bg_n, **kmeans_kwargs)
-    else:
-        rng_state = np.random.get_state()
-        np.random.seed(RANDOM_STATE)
-        try:
-            background_data = shap.kmeans(X_train_np, bg_n)
-        finally:
-            np.random.set_state(rng_state)
+        background_data = shap.kmeans(X_train_np, bg_n)
+    finally:
+        np.random.set_state(rng_state)
     background_np = np.asarray(
         getattr(background_data, "data", background_data),
         dtype=float,
@@ -125,20 +103,12 @@ def shap_gbsa(
     )
 
 
-import pandas as pd
-
-from cv_config import K_OUTER, MODEL_CONFIGS
-from gbsa import train_gbsa
-from preprocess import preprocess_df
-
-
 def _run_outer_fold(
     outer_idx: int,
     eval_entry: dict,
     design_matrix_path: Path,
     gbsa_configs: list[dict],
 ) -> tuple[int, bool, str]:
-    """Train (if needed) and compute SHAP for a single outer fold."""
     try:
         random.seed(int(RANDOM_STATE) + int(outer_idx))
         np.random.seed(int(RANDOM_STATE) + int(outer_idx))
@@ -157,7 +127,6 @@ def _run_outer_fold(
             cfg for cfg in gbsa_configs if cfg.get("name") == best_config_name
         )
 
-        # Train only if model artifact missing (avoid redundant work).
         model_path = outdir / "model.joblib"
         if not model_path.exists():
             print(
@@ -171,6 +140,7 @@ def _run_outer_fold(
                 config=config,
                 outer=True,
                 outdir=outdir,
+                run_ablation=False,
             )
 
         splits = preprocess_df(
@@ -190,7 +160,6 @@ if __name__ == "__main__":
         "outer_folds"
     ]
 
-    design_matrix_path = Path("data/design_matrix.csv")
     gbsa_configs = MODEL_CONFIGS["gbsa"]
 
     jobs = {}
@@ -202,13 +171,12 @@ if __name__ == "__main__":
                     _run_outer_fold,
                     i,
                     eval_metrics[f"outer{i}"],
-                    design_matrix_path,
+                    DESIGN_MATRIX_PATH,
                     gbsa_configs,
                 )
             ] = i
 
         for future in as_completed(jobs):
-            idx = jobs[future]
             outer_idx, ok, msg = future.result()
             status = "OK" if ok else "FAIL"
             print(f"[{status}] {msg}")

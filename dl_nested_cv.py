@@ -1,33 +1,24 @@
 from __future__ import annotations
 
 import argparse
-import json
 import traceback
-from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
 import pandas as pd
 
-from config import (
-    AUC,
-    C_INDEX,
-    DESIGN_MATRIX_PATH,
-    EVENT_COL,
-    FEATURES_DICT_PATH,
-    IBS,
-    LINE_COL,
-    MODALITY_GROUPS,
-    PATIENT_ID_COL,
-    RESULTS_PATH,
-    TIME_COL,
-)
-from cv_config import MODEL_CONFIGS, RANDOM_STATE, SPLITS_OUTPUT_DIR
+from config import AUC, C_INDEX, IBS
+from cv_config import C_SELECTION_EPS, RANDOM_STATE
 from deephit import train_deephit
 from deepsurv import train_deepsurv
 from dryrun import train_dryrun
-from model_setup import EVENT_COL
-from nested_cv_splits import generate_nested_cv_indices
+from nested_cv_splits import (
+    add_run_args,
+    model_configs,
+    prepare_run,
+    select_best_config,
+    write_metrics,
+)
 from utils import save_eval_metrics
 
 MODEL_RUNNERS = {
@@ -35,206 +26,45 @@ MODEL_RUNNERS = {
     "deephit": train_deephit,
     "dryrun": train_dryrun,
 }
-DRY_RUN_METRIC = 0.5
-# Treat configs within this C-index margin of the best score as ties.
-C_SELECTION_EPS = 0.003
 
 
-def _write_metrics_artifact(path: Path, payload: Dict[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as fout:
-        json.dump(payload, fout, indent=2)
-
-
-def _select_best_config(
-    config_scores: Dict[str, Dict[str, float]],
-    rank_of: Dict[str, int],
-) -> tuple[str, float, list[str]]:
-    best_c = max(float(metrics[C_INDEX]) for metrics in config_scores.values())
-    tied_names = sorted(
-        (
-            name
-            for name, metrics in config_scores.items()
-            if float(metrics[C_INDEX]) >= (best_c - C_SELECTION_EPS)
-        ),
-        key=lambda name: rank_of[name],
-    )
-    return tied_names[0], best_c, tied_names
+def _outer_split(manifest: Dict[str, object], outer_num: int):
+    split_path = manifest[f"outer{outer_num}_inner0"]["path"]
+    split = pd.read_csv(split_path)
+    if "outer_es" not in split.columns:
+        raise ValueError(f"Split file {split_path} missing `outer_es` column.")
+    non_test_mask = split["split"] != "test"
+    outer_es_mask = split["outer_es"].astype(bool)
+    train_idx = split.loc[non_test_mask & ~outer_es_mask, "idx"].to_numpy(dtype=int)
+    early_stop_idx = split.loc[non_test_mask & outer_es_mask, "idx"].to_numpy(dtype=int)
+    test_idx = split[split["split"] == "test"]["idx"].to_numpy(dtype=int)
+    if early_stop_idx.size == 0:
+        raise ValueError(f"Split file {split_path} produced empty `outer_es` set.")
+    if test_idx.size == 0:
+        raise ValueError(f"Split file {split_path} produced empty outer `test` set.")
+    return train_idx, early_stop_idx, test_idx
 
 
 def main():
     parser = argparse.ArgumentParser(
         description="Nested CV orchestrator that calls in-process trainers."
     )
-    parser.add_argument(
-        "--models",
-        type=str,
-        default="deepsurv",
-        help="Comma-separated model list.",
-    )
-    parser.add_argument(
-        "--exclude-modality",
-        type=str,
-        default=None,
-        help="Name of modality group to exclude.",
-    )
-    parser.add_argument(
-        "--only-modality",
-        type=str,
-        default=None,
-        help="Name of modality group to use exclusively.",
-    )
-    parser.add_argument(
-        "--drop-age",
-        action="store_true",
-        help="Drop AGE column from design matrix.",
-    )
-    parser.add_argument(
-        "--no-treatment-masking",
-        action="store_true",
-        help="Disable treatment masking by dropping PLANNED_ instead of default prefixes.",
-    )
+    add_run_args(parser, default_models="deepsurv")
     args = parser.parse_args()
     ignore_prefix = "PLANNED_" if args.no_treatment_masking else None
-
-    dm = pd.read_csv(DESIGN_MATRIX_PATH)
-    dm = dm[dm[EVENT_COL] != -1].reset_index(drop=True)
-
-    manifest, _ = generate_nested_cv_indices(
-        design_matrix=dm, seed=RANDOM_STATE, output_dir=Path(SPLITS_OUTPUT_DIR)
-    )
-
-    run_ablation = bool(args.exclude_modality or args.only_modality or args.drop_age)
-    if args.no_treatment_masking:
-        results_root = Path("leakage")
-    else:
-        results_root = Path("results_ablation") if run_ablation else RESULTS_PATH
-    ablation_cfg_names: Dict[str, List[str]] = {}
-    ablation_cfg_path = Path("data/ablation_configs.json")
-    if run_ablation:
-        if not ablation_cfg_path.exists():
-            raise FileNotFoundError(
-                f"Missing ablation config file: {ablation_cfg_path}"
-            )
-        try:
-            payload = json.load(open(ablation_cfg_path))
-            ablation_cfg_names = {
-                str(model): [str(name) for name in names]
-                for model, names in payload.items()
-                if isinstance(names, list)
-            }
-            print(f"Loaded ablation config names from {ablation_cfg_path}.")
-        except Exception as exc:
-            raise ValueError(f"Failed to load {ablation_cfg_path}: {exc}") from exc
-
-    if run_ablation:
-        FEATURES = json.load(open(FEATURES_DICT_PATH))
-        # only one of exclude_modality, only_modality, drop_age should be set
-        assert (
-            sum(
-                (
-                    args.exclude_modality is not None,
-                    args.only_modality is not None,
-                    args.drop_age,
-                )
-            )
-            <= 1
-        ), "Only one of --exclude-modality, --only-modality, --drop-age can be set."
-
-        if args.exclude_modality:
-            if args.exclude_modality == "Surveillance Patterns":
-                exclude_cols = [
-                    c
-                    for c in dm.columns
-                    if c in MODALITY_GROUPS["Surveillance Patterns"]
-                ]
-            else:
-                exclude_groups = MODALITY_GROUPS[args.exclude_modality]
-                exclude_cols = sorted(
-                    {
-                        col
-                        for group in exclude_groups
-                        for col in FEATURES[group]
-                        if col in dm.columns
-                    }
-                )
-            dm = dm.drop(columns=exclude_cols)
-            results_root = results_root / f"exclude_{args.exclude_modality.lower()}"
-            # dump a text line saying which columns were dropped to results_root/excluded_columns.txt
-            excluded_cols_path = results_root / "excluded_columns.txt"
-            excluded_cols_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(excluded_cols_path, "w") as fout:
-                fout.write(", ".join(exclude_cols) + "\n")
-
-        elif args.only_modality:
-            if args.only_modality == "Surveillance Patterns":
-                include_cols = [
-                    c
-                    for c in dm.columns
-                    if c in MODALITY_GROUPS["Surveillance Patterns"]
-                ]
-            else:
-                include_groups = MODALITY_GROUPS[args.only_modality]
-                include_cols = sorted(
-                    {
-                        col
-                        for group in include_groups
-                        for col in FEATURES[group]
-                        if col in dm.columns
-                    }
-                )
-
-            include_cols += [
-                EVENT_COL,
-                TIME_COL,
-                PATIENT_ID_COL,
-                LINE_COL,
-            ]
-            dm = dm[include_cols]
-            print(f"Kept only cols {include_cols} for modality {args.only_modality}")
-            results_root = results_root / f"only_{args.only_modality.lower()}"
-            # dump a text line saying which columns were dropped to results_root/excluded_columns.txt
-            included_cols_path = results_root / "included_columns.txt"
-            included_cols_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(included_cols_path, "w") as fout:
-                fout.write(", ".join(include_cols) + "\n")
-        elif args.drop_age:
-            dm = dm.drop(columns=["AGE"])
-            print("Dropped AGE column from design matrix.")
-            results_root = results_root / "drop_age"
+    dm, manifest, results_root, ablation_configs = prepare_run(args)
+    run_ablation = ablation_configs is not None
 
     for raw_model in args.models.split(","):
         try:
             model = raw_model.strip()
-            configs = MODEL_CONFIGS[model]
-            if run_ablation:
-                allowed = set(ablation_cfg_names.get(model, []))
-                if not allowed:
-                    raise ValueError(
-                        f"No ablation config names listed for model {model} in {ablation_cfg_path}."
-                    )
-                configs = [cfg for cfg in configs if cfg.get("name") in allowed]
-                if not configs:
-                    raise ValueError(
-                        f"No configs left for model {model} after ablation filter."
-                    )
-                print(
-                    f"Using {len(configs)} filtered configs for {model} from {ablation_cfg_path}."
-                )
-            configs_dict = {cfg["name"]: cfg for cfg in configs}
+            configs_dict = model_configs(model, ablation_configs)
             model_metrics: Dict[str, object] = {
                 "model": model,
                 "outer_folds": {},
             }
             if run_ablation:
-                if len(configs_dict) != 1:
-                    raise ValueError(
-                        f"Expected exactly one ablation config for model {model}, got {len(configs_dict)}."
-                    )
                 config_name, config = next(iter(configs_dict.items()))
-                print(
-                    f"Using single ablation config {config_name} for {model}; skipping inner folds."
-                )
                 for outer_num in range(manifest["k_outer"]):
                     print(f"OUTER FOLD {outer_num}: {model}--{config_name}")
                     outer_key = f"outer{outer_num}"
@@ -242,30 +72,7 @@ def main():
                         "outer": outer_num,
                         "inner_skipped": True,
                     }
-                    split = pd.read_csv(manifest[f"outer{outer_num}_inner0"]["path"])
-                    if "outer_es" not in split.columns:
-                        raise ValueError(
-                            f"Split file {manifest[f'outer{outer_num}_inner0']['path']} missing `outer_es` column."
-                        )
-                    non_test_mask = split["split"] != "test"
-                    outer_es_mask = split["outer_es"].astype(bool)
-                    train_idx = split.loc[
-                        non_test_mask & ~outer_es_mask, "idx"
-                    ].to_numpy(dtype=int)
-                    early_stop_idx = split.loc[
-                        non_test_mask & outer_es_mask, "idx"
-                    ].to_numpy(dtype=int)
-                    test_idx = split[split["split"] == "test"]["idx"].to_numpy(
-                        dtype=int
-                    )
-                    if early_stop_idx.size == 0:
-                        raise ValueError(
-                            f"Split file {manifest[f'outer{outer_num}_inner0']['path']} produced empty `outer_es` set."
-                        )
-                    if test_idx.size == 0:
-                        raise ValueError(
-                            f"Split file {manifest[f'outer{outer_num}_inner0']['path']} produced empty outer `test` set."
-                        )
+                    train_idx, early_stop_idx, test_idx = _outer_split(manifest, outer_num)
                     final_config = config.copy()
                     final_config["outer_fold"] = outer_num
                     final_config["ignore_prefix"] = ignore_prefix
@@ -297,10 +104,8 @@ def main():
                     }
                     outer_entry["best_model"] = best_model_record
                     model_metrics["outer_folds"][outer_key] = best_model_record
-                    _write_metrics_artifact(outer_outdir / "fold_metrics.json", outer_entry)
-                _write_metrics_artifact(
-                    results_root / model / "eval_metrics.json", model_metrics
-                )
+                    write_metrics(outer_outdir / "fold_metrics.json", outer_entry)
+                write_metrics(results_root / model / "eval_metrics.json", model_metrics)
                 print(f"Wrote metrics to {results_root / model / 'eval_metrics.json'}")
                 continue
 
@@ -310,7 +115,7 @@ def main():
                 outer_entry: Dict[str, object] = {"outer": outer_num}
                 model_metrics["outer_folds"][
                     outer_key
-                ] = None  # placeholder; fill after best_model
+                ] = None
                 config_avgs: Dict[str, Dict[str, float]] = {}
                 inner_data: Dict[int, Dict[str, object]] = {
                     i: {} for i in range(manifest["k_inner"])
@@ -360,7 +165,7 @@ def main():
                                 val_idx=early_stop_idx.astype(int),
                                 test_idx=eval_idx.astype(
                                     int
-                                ),  # report inner performance on held-out eval fold
+                                ),
                                 design_matrix=dm,
                                 config=config_ctx,
                                 outer=False,
@@ -392,11 +197,10 @@ def main():
                         IBS: np.mean(ibs_vals),
                     }
 
-                # select the best model, fit on the outer fold. Save models, metrics, surv outputs, and SHAP values.
                 rank_of = {
                     name: cfg["internal_ranking"] for name, cfg in configs_dict.items()
                 }
-                best_config_name, best_c, c_tie_names = _select_best_config(
+                best_config_name, best_c, c_tie_names = select_best_config(
                     config_avgs,
                     rank_of,
                 )
@@ -406,29 +210,7 @@ def main():
                     f" eps={C_SELECTION_EPS:.3f},"
                     f" candidates={c_tie_names}"
                 )
-                # use the inner0 split to get train/test indices for final eval from outer fold
-                split = pd.read_csv(manifest[f"outer{outer_num}_inner0"]["path"])
-                if "outer_es" not in split.columns:
-                    raise ValueError(
-                        f"Split file {manifest[f'outer{outer_num}_inner0']['path']} missing `outer_es` column."
-                    )
-                non_test_mask = split["split"] != "test"
-                outer_es_mask = split["outer_es"].astype(bool)
-                train_idx = split.loc[non_test_mask & ~outer_es_mask, "idx"].to_numpy(
-                    dtype=int
-                )
-                early_stop_idx = split.loc[
-                    non_test_mask & outer_es_mask, "idx"
-                ].to_numpy(dtype=int)
-                test_idx = split[split["split"] == "test"]["idx"].to_numpy(dtype=int)
-                if early_stop_idx.size == 0:
-                    raise ValueError(
-                        f"Split file {manifest[f'outer{outer_num}_inner0']['path']} produced empty `outer_es` set."
-                    )
-                if test_idx.size == 0:
-                    raise ValueError(
-                        f"Split file {manifest[f'outer{outer_num}_inner0']['path']} produced empty outer `test` set."
-                    )
+                train_idx, early_stop_idx, test_idx = _outer_split(manifest, outer_num)
                 final_config = configs_dict[best_config_name].copy()
                 final_config["outer_fold"] = outer_num
                 final_config["ignore_prefix"] = ignore_prefix
@@ -470,11 +252,9 @@ def main():
                 best_model_record["name"] = best_config_name
                 outer_entry["best_model"] = best_model_record
                 model_metrics["outer_folds"][outer_key] = best_model_record
-                _write_metrics_artifact(outer_outdir / "fold_metrics.json", outer_entry)
+                write_metrics(outer_outdir / "fold_metrics.json", outer_entry)
 
-            _write_metrics_artifact(
-                results_root / model / "eval_metrics.json", model_metrics
-            )
+            write_metrics(results_root / model / "eval_metrics.json", model_metrics)
             print(f"Wrote metrics to {results_root / model / 'eval_metrics.json'}")
         except Exception as exc:
             print(f"[ERROR] {model} overall: {exc}")

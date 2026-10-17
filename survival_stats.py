@@ -13,17 +13,6 @@ def km_median_ci(
     *,
     alpha: float = 0.05,
 ) -> Tuple[float, float, float]:
-    """
-    Kaplan–Meier median survival time and an approximate (1-alpha) CI.
-
-    The CI is obtained by inverting pointwise log(-log) Greenwood confidence
-    bands for the survival function and finding the first time each band drops
-    to <= 0.5 (Brookmeyer–Crowley style inversion).
-
-    Returns (median, lower, upper) in the same units as `durations`.
-    If the median is not reached, returns np.inf (and CI bounds may be np.inf).
-    If inputs are empty/invalid, returns (np.nan, np.nan, np.nan).
-    """
     durations_num = pd.to_numeric(durations, errors="coerce").to_numpy(dtype=float)
     events_num = pd.to_numeric(events, errors="coerce").to_numpy(dtype=float)
     mask = np.isfinite(durations_num) & np.isfinite(events_num)
@@ -44,7 +33,6 @@ def km_median_ci(
         return (float("inf"), float("inf"), float("inf"))
 
     n_total = t.size
-    # At-risk just before each event time.
     left_idx = np.searchsorted(t, event_times, side="left")
     n_at_risk = n_total - left_idx
 
@@ -63,12 +51,10 @@ def km_median_ci(
         s_prev = s_prev * frac
         surv[i] = s_prev
 
-        # Greenwood term is undefined when n_i == d_i; survival hits 0 anyway.
         if n_i > d_i and d_i > 0:
             greenwood_sum += d_i / (n_i * (n_i - d_i))
         var_s[i] = (s_prev * s_prev) * greenwood_sum
 
-    # Log(-log) Greenwood CI bands for survival function.
     z = float(stats.norm.ppf(1.0 - alpha / 2.0))
     lower_s = np.empty_like(surv)
     upper_s = np.empty_like(surv)
@@ -91,7 +77,6 @@ def km_median_ci(
         se_g = se / denom
         g = float(np.log(-np.log(s)))
 
-        # g +/- z*se_g; mapping back is monotone decreasing, so bounds swap.
         upper_s[i] = float(np.exp(-np.exp(g - z * se_g)))
         lower_s[i] = float(np.exp(-np.exp(g + z * se_g)))
 
@@ -108,4 +93,3 @@ def km_median_ci(
     median_low = _first_time_leq(lower_s, 0.5)
     median_high = _first_time_leq(upper_s, 0.5)
     return (float(median), float(median_low), float(median_high))
-

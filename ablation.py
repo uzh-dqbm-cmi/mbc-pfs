@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-"""Run outer-fold modality ablations using existing cv_splits/* files."""
-
 from __future__ import annotations
 
 import argparse
@@ -10,6 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Sequence
 
 from config import MODALITY_GROUPS
+from cv_config import ABLATION_CONFIGS_PATH
 
 
 def _run(cmd: Sequence[str], *, dry_run: bool) -> None:
@@ -42,21 +40,20 @@ def _build_cmd(args: argparse.Namespace, *, mode: str, group: str | None = None)
 def main() -> None:
     ap = argparse.ArgumentParser(
         description=(
-            "Run outer-fold ablations for each modality group in config.MODALITY_GROUPS, "
-            "reusing existing cv_splits/*.csv and the single config in data/ablation_configs.json."
+            "Run outer-fold ablations for each modality group in config.MODALITY_GROUPS and for AGE, "
+            f"reusing existing cv_splits/*.csv and the single config in {ABLATION_CONFIGS_PATH}."
         )
     )
     ap.add_argument(
         "--runner",
         required=True,
-        # fixed string of cpu or dl
         type=str,
         choices=["cpu", "dl"],
     )
     ap.add_argument(
         "--models",
         default="dryrun",
-        help="Comma-separated model list passed to cpu_nested_cv.py.",
+        help="Comma-separated model list passed to <runner>_nested_cv.py.",
     )
     ap.add_argument(
         "--dry-run",

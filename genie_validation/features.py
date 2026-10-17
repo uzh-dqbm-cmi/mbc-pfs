@@ -23,14 +23,13 @@ from design_matrix_pipeline.modalities.tumor_markers import (
 )
 
 from . import mapping as M
-from . import paths
 
 FrameAndMappings = Tuple[pd.DataFrame, List[M.FeatureMapping]]
 
 
 @dataclass
 class FeatureContext:
-    labels: pd.DataFrame 
+    labels: pd.DataFrame
     cancer: pd.DataFrame
     patient: pd.DataFrame
     imaging: pd.DataFrame
@@ -38,7 +37,7 @@ class FeatureContext:
     pathology: pd.DataFrame
     panel: pd.DataFrame
     mutations: pd.DataFrame
-    cna: pd.DataFrame 
+    cna: pd.DataFrame
     groups: Dict[str, List[str]]
 
     @property
@@ -50,7 +49,6 @@ class FeatureContext:
         return self.labels[["PATIENT_ID", "LINE", "LINE_START"]].copy()
 
     def cancer_per_line(self, cols: List[str]) -> pd.DataFrame:
-        """Attach per-cancer ``cols`` to each line via (PATIENT_ID, CA_SEQ)."""
         right = self.cancer.rename(columns={"record_id": "PATIENT_ID", "ca_seq": "CA_SEQ"})
         right = right[["PATIENT_ID", "CA_SEQ", *cols]].copy()
         right["PATIENT_ID"] = right["PATIENT_ID"].astype(str)
@@ -220,6 +218,7 @@ def build_tumor_markers(ctx: FeatureContext) -> FrameAndMappings:
                 "CEA is not measured in GENIE -> empty (MISSING=1, kinetics NaN)", "empty"))
     return out, mappings
 
+
 def build_ecog(ctx: FeatureContext) -> FrameAndMappings:
     cols = ctx.groups["ECOG"]
     out = ctx.keys
@@ -237,6 +236,7 @@ def build_ecog(ctx: FeatureContext) -> FrameAndMappings:
         for c in cols
     ]
     return out, mappings
+
 
 def build_pdl1(ctx: FeatureContext) -> FrameAndMappings:
     cols = ctx.groups["PDL1"]
@@ -285,6 +285,7 @@ def build_mmr(ctx: FeatureContext) -> FrameAndMappings:
     ]
     return out, mappings
 
+
 def build_treatment(ctx: FeatureContext) -> FrameAndMappings:
     cols = ctx.groups["TREATMENT"]
     planned_cols = {c for c in cols if c.startswith("PLANNED_AGENT_")}
@@ -294,6 +295,7 @@ def build_treatment(ctx: FeatureContext) -> FrameAndMappings:
     for c in cols:
         out[c] = 0
     out = out.astype({c: "int8" for c in cols})
+
     for idx, drug_str in enumerate(ctx.labels["REGIMEN_DRUGS"].fillna("")):
         suffixes = M.line_agent_suffixes(drug_str) or set()
         for suffix in suffixes:
@@ -322,6 +324,7 @@ def build_treatment(ctx: FeatureContext) -> FrameAndMappings:
             mappings.append(M.FeatureMapping(c, "TREATMENT", "regimen_cancer_level_dataset.csv",
                                              "regimen_drugs", "treatment-class flag", "mapped"))
     return out, mappings
+
 
 def build_local_treatment(ctx: FeatureContext) -> FrameAndMappings:
     cols = ctx.groups["LOCAL_TREATMENT"]
@@ -354,7 +357,6 @@ def build_cancer_presence(ctx: FeatureContext) -> FrameAndMappings:
     })
     for part in body_parts:
         measurements[part] = parts.map(lambda s, p=part: 1 if p in s else 0).astype(int).values
-    # drop scans that imaged nothing recognizable
     measurements = measurements[measurements[body_parts].sum(axis=1) > 0].reset_index(drop=True)
 
     result = aggregate_cancer_presence_features(
@@ -380,6 +382,7 @@ def build_cancer_presence(ctx: FeatureContext) -> FrameAndMappings:
         for c in cols
     ]
     return out, mappings
+
 
 def build_tumor_sites(ctx: FeatureContext) -> FrameAndMappings:
     cols = ctx.groups["TUMOR_SITES"]
@@ -407,8 +410,7 @@ def build_tumor_sites(ctx: FeatureContext) -> FrameAndMappings:
             tcol = f"dx_to_{g}_days"
             t = pd.to_numeric(frame.get(tcol), errors="coerce").to_numpy(dtype=float)
             cand = np.where(flag, t, np.nan)
-            onset = np.fmin(onset, cand)  # nan-aware min
-        # fallbacks for a present-but-undated site
+            onset = np.fmin(onset, cand)
         need_fallback = present & np.isnan(onset)
         onset = np.where(need_fallback, dmets_overall, onset)
         still = present & np.isnan(onset) & is_iv
@@ -432,25 +434,24 @@ def build_tumor_sites(ctx: FeatureContext) -> FrameAndMappings:
     ]
     return out, mappings
 
+
 def build_genomics(ctx: FeatureContext) -> FrameAndMappings:
     cols = ctx.groups["GENOMICS"]
     mut_genes = [c[len("GENOMICS_MUTATION_"):] for c in cols if c.startswith("GENOMICS_MUTATION_")]
     amp_genes = [c[len("GENOMICS_AMPLIFICATION_"):] for c in cols if c.startswith("GENOMICS_AMPLIFICATION_")]
     del_genes = [c[len("GENOMICS_DELETION_"):] for c in cols if c.startswith("GENOMICS_DELETION_")]
 
-    # one representative panel sample per patient: earliest NGS report.
     panel = ctx.panel.copy()
     panel["record_id"] = panel["record_id"].astype(str)
     panel["dx_cpt_rep_days"] = pd.to_numeric(panel["dx_cpt_rep_days"], errors="coerce")
     panel = panel.sort_values(["record_id", "dx_cpt_rep_days"], kind="mergesort")
     rep = panel.drop_duplicates("record_id", keep="first")
     patient_to_sample = dict(zip(rep["record_id"], rep["cpt_genie_sample_id"].astype(str)))
-    # NGS report day (days from diagnosis) of that sample, for no-lookahead gating
     patient_to_seqday = dict(zip(rep["record_id"], rep["dx_cpt_rep_days"]))
 
     mut = ctx.mutations
     mut_by_sample = mut.groupby("Tumor_Sample_Barcode")["Hugo_Symbol"].agg(set).to_dict()
-    cna = ctx.cna  # index Hugo_Symbol, columns samples
+    cna = ctx.cna
     cna_samples = set(cna.columns)
 
     rows = []
@@ -473,6 +474,7 @@ def build_genomics(ctx: FeatureContext) -> FrameAndMappings:
     out = out.merge(
         ctx.labels[["PATIENT_ID", "LINE", "LINE_START"]], on=["PATIENT_ID", "LINE"], how="left"
     )
+
     seq_day = pd.to_numeric(out["PATIENT_ID"].map(patient_to_seqday), errors="coerce")
     available = seq_day.notna() & (seq_day <= out["LINE_START"])
 

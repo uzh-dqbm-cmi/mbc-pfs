@@ -1,17 +1,13 @@
-"""Build the master design matrix by stitching modality-specific feature tables."""
-
-# %%
 from __future__ import annotations
 
 import argparse
 import json
-import re
-from typing import Optional
 
 import numpy as np
 import pandas as pd
 
-from data_paths import data_csv, set_data_suffix
+from config import LINE_START_WINDOW_DAYS
+from data_paths import data_dir
 from design_matrix_pipeline import (
     assemble_design_matrix,
     build_all_modalities,
@@ -45,25 +41,9 @@ def order_columns(design_matrix: pd.DataFrame, features_dict: dict) -> pd.DataFr
     return design_matrix[ordered_unique + remaining]
 
 
-def _infer_option_from_suffix(data_suffix: Optional[str]) -> Optional[str]:
-    if not data_suffix:
-        return None
-    match = re.search(r"option_([A-D])", data_suffix, flags=re.IGNORECASE)
-    if not match:
-        return None
-    return match.group(1).upper()
-
-
-def build_design_matrix_pipeline(
-    data_suffix: Optional[str] = None, option: Optional[str] = None
-) -> pd.DataFrame:
-    """Construct and persist the design matrix, returning the in-memory frame."""
-    suffix = (data_suffix or "").strip()
-    effective_option = (option or _infer_option_from_suffix(suffix) or "").upper()
-    effective_option = effective_option or None
-    set_data_suffix(suffix)
-    suffix_arg: Optional[str] = suffix or None
-    ctx = create_context(data_suffix=suffix_arg, option=effective_option)
+def build_design_matrix_pipeline(window_days: int = LINE_START_WINDOW_DAYS) -> pd.DataFrame:
+    out_dir = data_dir(window_days)
+    ctx = create_context(window_days)
     modality_frames = build_all_modalities(ctx)
     design_matrix, features_dict = assemble_design_matrix(ctx, modality_frames)
 
@@ -88,8 +68,6 @@ def build_design_matrix_pipeline(
         )
     design_matrix = order_columns(design_matrix, features_dict)
 
-    design_matrix_path = data_csv("design_matrix", suffix_arg)
-
     print(
         "Design matrix before eligibility filters:"
         f" {design_matrix.shape} across {design_matrix['PATIENT_ID'].nunique():,} patients"
@@ -97,7 +75,7 @@ def build_design_matrix_pipeline(
 
     drop_mask = design_matrix["PFS_EVENT"] == -1
     dropped_lines = design_matrix.loc[drop_mask].copy().reset_index(drop=True)
-    dropped_lines.to_csv("data/dropped_lines.csv", index=False)
+    dropped_lines.to_csv(out_dir / "dropped_lines.csv", index=False)
 
     patients_before = set(design_matrix["PATIENT_ID"].unique())
     kept_patients = set(design_matrix.loc[~drop_mask, "PATIENT_ID"].unique())
@@ -119,7 +97,6 @@ def build_design_matrix_pipeline(
             f"  Other ineligible LoTs: {other_lines:,} across {other_patients:,} patients"
         )
 
-    # DROP BEFORE DOWNSTREAM: LINES with PFS_EVENT = -1 and TREATMENT COLS
     design_matrix = (
         design_matrix[design_matrix["PFS_EVENT"] != -1].copy().reset_index(drop=True)
     )
@@ -127,20 +104,17 @@ def build_design_matrix_pipeline(
         "Remaining after dropping PFS_EVENT=-1:"
         f" {design_matrix.shape} across {design_matrix['PATIENT_ID'].nunique():,} patients"
     )
-    # Retain only agent-level features
     treatment_cols = [
         c
         for c in design_matrix.columns
         if c.startswith("PLANNED_TREATMENT_") or c.startswith("RECEIVED_TREATMENT_")
     ]
     design_matrix = design_matrix.drop(columns=treatment_cols)
-    # also delete treatment_cols from features_dict
     if "TREATMENT" in features_dict:
         features_dict["TREATMENT"] = [
             c for c in features_dict["TREATMENT"] if c not in treatment_cols
         ]
     bool_cols = [c for c in design_matrix.columns if design_matrix[c].dtype == "bool"]
-    # typecast all boolean columns to Int8
     print(f"Converting {len(bool_cols)} boolean columns to Int8")
     for col in bool_cols:
         design_matrix[col] = design_matrix[col].astype("Int8")
@@ -185,27 +159,15 @@ def build_design_matrix_pipeline(
     features_dict.setdefault("TREATMENT", [])
     if "IS_MLOT1" not in features_dict["TREATMENT"]:
         features_dict["TREATMENT"].append("IS_MLOT1")
-    with open("data/features_dict.json", "w", encoding="utf-8") as handle:
+    with open(out_dir / "features_dict.json", "w", encoding="utf-8") as handle:
         json.dump(features_dict, handle, indent=2)
-    design_matrix.to_csv(design_matrix_path, index=False)
+    design_matrix.to_csv(out_dir / "design_matrix.csv", index=False)
     return design_matrix
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Assemble the design matrix, optionally using a suffixed artifact set."
+        description="Rebuild the design matrix from BREAST_pfs.csv written by pipeline_overview.py."
     )
-    parser.add_argument(
-        "--data-suffix",
-        default="",
-        help="Suffix appended to BREAST_treatment/pfs and design_matrix outputs.",
-    )
-    parser.add_argument(
-        "--option",
-        choices=["A", "B", "C", "D"],
-        help="Option letter (used for option-specific column handling).",
-    )
-    args = parser.parse_args()
-    build_design_matrix_pipeline(
-        data_suffix=args.data_suffix or "", option=args.option or None
-    )
+    parser.add_argument("--window-days", type=int, default=LINE_START_WINDOW_DAYS)
+    build_design_matrix_pipeline(parser.parse_args().window_days)
