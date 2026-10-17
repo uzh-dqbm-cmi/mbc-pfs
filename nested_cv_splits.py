@@ -51,6 +51,16 @@ def generate_early_stopping_split(
     val_frac: float,
     base_indices: np.ndarray,
 ) -> Dict[str, np.ndarray]:
+    """
+    Create a single stratified-group split for early stopping using stratified shuffle.
+
+    This uses the same strata definition as the nested CV and carves out roughly
+    ``val_frac`` (default 10%) of the provided rows for early stopping. If
+    ``base_indices`` is provided, the split is restricted to that subset of the
+    design matrix (e.g., an outer-fold train set) and returned indices are in
+    the original design-matrix index space.
+    """
+
     work_df = design_matrix.iloc[base_indices]
     groups_all = work_df[GROUP_COL].astype(str).to_numpy()
     strata = _hr_her2_admin_strata(
@@ -69,6 +79,7 @@ def generate_early_stopping_split(
             f"need at least 2, found {min_per_stratum}."
         )
 
+    # Build a group-level table for stratified shuffle splitting.
     group_labels = []
     strata_labels = []
     for g, s in zip(groups_all, strata):
@@ -133,7 +144,9 @@ def generate_nested_cv_indices(
 
     if len(groups_all) != len(strata):
         raise ValueError("Strata and design matrix length mismatch.")
+    # assert and print the strata numbers: should be 8 in total
     unique = np.unique(strata)
+    # print(f"Strata counts: {strata_counts}")
     assert len(unique) == 8, f"Expected 8 strata, found {len(unique)}."
 
     min_per_stratum = _min_groups_per_stratum(strata, groups_all)
@@ -213,6 +226,8 @@ def generate_nested_cv_indices(
                 f"nestedcv_seed{seed}_outer{outer_idx}_inner{inner_idx}.csv"
             )
             split_path = output_dir / split_filename
+            # If a split exists, ensure the core split assignment is unchanged; allow
+            # upgrading older files that predate early-stopping columns.
             if split_path.exists():
                 if not split_df.equals(pd.read_csv(split_path)):
                     raise ValueError(
@@ -231,6 +246,7 @@ def generate_nested_cv_indices(
                 "n_test": int(idx_test.size),
             }
 
+        # check that the groups are disjoint between all three fold
         test_groups = set(
             design_matrix.iloc[idx_test][GROUP_COL].astype(str).to_numpy()
         )
@@ -314,6 +330,7 @@ def _write_columns(path: Path, cols: List[str]) -> None:
 def prepare_run(
     args: argparse.Namespace,
 ) -> Tuple[pd.DataFrame, Dict[str, object], Path, Optional[Dict[str, List[str]]]]:
+    # only one of exclude_modality, only_modality, drop_age should be set
     n_ablations = sum(
         (args.exclude_modality is not None, args.only_modality is not None, args.drop_age)
     )
@@ -346,6 +363,7 @@ def prepare_run(
         exclude_cols = _modality_columns(dm, args.exclude_modality)
         dm = dm.drop(columns=exclude_cols)
         results_root = results_root / f"exclude_{args.exclude_modality.lower()}"
+        # dump a text line saying which columns were dropped to results_root/excluded_columns.txt
         _write_columns(results_root / "excluded_columns.txt", exclude_cols)
     elif args.only_modality:
         include_cols = _modality_columns(dm, args.only_modality) + [
@@ -357,6 +375,7 @@ def prepare_run(
         dm = dm[include_cols]
         print(f"Kept only cols {include_cols} for modality {args.only_modality}")
         results_root = results_root / f"only_{args.only_modality.lower()}"
+        # dump a text line saying which columns were dropped to results_root/excluded_columns.txt
         _write_columns(results_root / "included_columns.txt", include_cols)
     else:
         dm = dm.drop(columns=["AGE"])

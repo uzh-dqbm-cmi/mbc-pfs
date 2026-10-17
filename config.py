@@ -5,7 +5,7 @@ from typing import Dict, List
 
 try:
     import torch
-except ModuleNotFoundError:
+except ModuleNotFoundError:  # pragma: no cover
     torch = None
 
 RESULTS_PATH = Path("results")
@@ -37,6 +37,8 @@ FEATURES_DICT_PATH = Path("data") / "features_dict.json"
 MSK_DATA_DIR = Path("data/msk_chord_2024")
 CANCER_TYPE = "BREAST"
 
+# additionally, read features_dict.json to group survival-pattern features
+# this can only be used after features_dict.json is generated
 features_dict = (
     json.load(open(FEATURES_DICT_PATH)) if FEATURES_DICT_PATH.exists() else {}
 )
@@ -67,18 +69,24 @@ EVAL_HORIZONS = list(range(90, 2 * 365 + 1, 30))
 EVAL_HORIZONS += [365, 730]
 
 
+# Explainability / evaluation constants
 SHAP_GBSA_BACKGROUND = 200
 
+# Aggregation windows (for building the design matrix)
+# Tumor markers (numeric):
 MARKER_SHORT_WINDOW_DAYS = 60
 MARKER_LONG_WINDOW_DAYS = 180
 MARKER_TAU_SHORT = 30.0
 MARKER_TAU_LONG = 90.0
 
+# Radiology report window:
 RADIOLOGY_REPORT_WINDOW_DAYS = 90
 
+# ECOG parameters
 ECOG_LOOKBACK_DAYS = 90
 ECOG_EVER_GE2_WINDOW = 180
 
+# Constants for column names
 PATIENT_ID_COL = "PATIENT_ID"
 LINE_COL = "LINE"
 START_DATE_COL = "START_DATE"

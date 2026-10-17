@@ -149,10 +149,6 @@ def fit_model(name, force=False):
     clinical = ["HR", "HER2", "ECOG_LAST_OBS", "TUMOR_SITE_LIVER_IN_WINDOW", "CA15_3_LAST_OBS_LOG"]
     if name == "ref_mlot1_ca15_3":
         frame = dm[identity + clinical + ["IS_MLOT1"]].copy()
-    elif name == "clinical_cox":
-        frame = dm[identity + clinical + ["ECOG_MISSING"]].copy()
-        frame["CLINICAL_LINE_NUMBER"] = dm.LINE
-        frame["CA15_3_LATEST_MISSING"] = dm.CA15_3_LAST_OBS_LOG.isna().astype(int)
     elif name == "gbsa_no_line_missingness":
         frame = dm.drop(columns=line_missingness_columns(dm))
     elif name == "gbsa_site_count":
@@ -171,7 +167,7 @@ def fit_model(name, force=False):
                        split.loc[split.split.eq("test"), "idx"].to_numpy())
         prep = preprocess_df(train, test, test, frame)
         model = (CoxPHSurvivalAnalysis(alpha=1.0, ties="efron", n_iter=1000)
-                 if name in ("ref_mlot1_ca15_3", "clinical_cox") else
+                 if name == "ref_mlot1_ca15_3" else
                  GradientBoostingSurvivalAnalysis(**joblib.load(Path(info["results_path"]) / "model.joblib").get_params()))
         model.fit(prep["X_train_np"], prep["y_train_sksurv"])
         curves = model.predict_survival_function(prep["X_test_np"], return_array=True)
@@ -183,7 +179,7 @@ def fit_model(name, force=False):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--fit", required=True, choices=["ref_mlot1_ca15_3", "clinical_cox", "gbsa_no_line_missingness", "gbsa_site_count"])
+    parser.add_argument("--fit", required=True, choices=["ref_mlot1_ca15_3", "gbsa_no_line_missingness", "gbsa_site_count"])
     parser.add_argument("--force", action="store_true", help="Replace the saved fold predictions.")
     args = parser.parse_args()
     fit_model(args.fit, args.force)

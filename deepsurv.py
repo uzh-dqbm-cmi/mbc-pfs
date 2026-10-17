@@ -1,3 +1,18 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.2
+#   kernelspec:
+#     display_name: .venv
+#     language: python
+#     name: python3
+# ---
+# %%
 from __future__ import annotations
 
 import os
@@ -33,6 +48,18 @@ def train_deepsurv(
     outdir: Path,
     run_ablation: bool,
 ) -> dict:
+    """
+    Trains DeepSurv model and evaluates it.
+
+    Args:
+        train_idx (np.ndarray): Indices for training data.
+        test_idx (np.ndarray): Indices for testing data.
+        design_matrix (pd.DataFrame): The design matrix containing features.
+        config (dict): Configuration dictionary.
+
+    Returns:
+        dict: Evaluation metrics.
+    """
     if outdir is None:
         raise ValueError("outdir must be provided for train_deepsurv.")
 
@@ -97,7 +124,7 @@ def train_deepsurv(
         shuffle=True,
         generator=torch_generator,
         num_workers=0,
-    )
+    )  # shuffling for minibatch gradient descent
     val_loader = DataLoader(val_data, batch_size, shuffle=False, num_workers=0)
     train_epoch_losses: list[float] = []
     val_epoch_losses: list[float] = []

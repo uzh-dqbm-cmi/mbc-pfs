@@ -18,5 +18,4 @@ def combinations(dm, col_name):
 
 def build(ctx):
     dm = ctx.manuscript.dm
-    return [Panel("", combinations(dm[dm.LINE == 1], "AGENT"),
-                  "Percentages reflect the share within each HR/HER2 subtype.")]
+    return [Panel("", combinations(dm[dm.LINE == 1], "AGENT"))]

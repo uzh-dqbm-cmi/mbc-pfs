@@ -115,7 +115,7 @@ def main():
                 outer_entry: Dict[str, object] = {"outer": outer_num}
                 model_metrics["outer_folds"][
                     outer_key
-                ] = None
+                ] = None  # placeholder; fill after best_model
                 config_avgs: Dict[str, Dict[str, float]] = {}
                 inner_data: Dict[int, Dict[str, object]] = {
                     i: {} for i in range(manifest["k_inner"])
@@ -165,7 +165,7 @@ def main():
                                 val_idx=early_stop_idx.astype(int),
                                 test_idx=eval_idx.astype(
                                     int
-                                ),
+                                ),  # report inner performance on held-out eval fold
                                 design_matrix=dm,
                                 config=config_ctx,
                                 outer=False,
@@ -197,6 +197,7 @@ def main():
                         IBS: np.mean(ibs_vals),
                     }
 
+                # select the best model, fit on the outer fold. Save models, metrics, surv outputs, and SHAP values.
                 rank_of = {
                     name: cfg["internal_ranking"] for name, cfg in configs_dict.items()
                 }
@@ -210,6 +211,7 @@ def main():
                     f" eps={C_SELECTION_EPS:.3f},"
                     f" candidates={c_tie_names}"
                 )
+                # use the inner0 split to get train/test indices for final eval from outer fold
                 train_idx, early_stop_idx, test_idx = _outer_split(manifest, outer_num)
                 final_config = configs_dict[best_config_name].copy()
                 final_config["outer_fold"] = outer_num

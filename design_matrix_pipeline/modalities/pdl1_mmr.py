@@ -19,6 +19,8 @@ def make_tri_state_from_last_prior(
     neg_name: str,
     unk_name: str,
 ) -> pd.DataFrame:
+    """Produce mutually exclusive POS/NEG/UNK flags based on the latest prior result."""
+
     events = events_df[[PATIENT_ID_COL, START_DATE_COL, value_col]].dropna().copy()
     events[START_DATE_COL] = events[START_DATE_COL].astype(int)
     events[value_col] = events[value_col].astype(int)

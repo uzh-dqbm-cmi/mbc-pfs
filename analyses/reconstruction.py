@@ -3,10 +3,8 @@ from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
-from tabulate import tabulate
 
 from config import RADIOLOGY_REPORT_WINDOW_DAYS
-from genie_validation import paths as P
 from analyses.common import agreement as G, bpc_adapter as A, bpc_data as B, cohort as C, reconstruction as R
 
 SITE_GROUPS = ("DFCI", "VICC", "MSK")
@@ -43,21 +41,12 @@ def load_bpc_endpoints():
     return rows, met
 
 
-def show(frame, left=1):
-    return tabulate(frame, headers="keys", tablefmt="psql", showindex=False, disable_numparse=True,
-                    colalign=["left"] * left + ["right"] * (frame.shape[1] - left))
-
-
 def frac(n, d):
     return f"{int(n):,}/{int(d):,} ({n / d:.1%})"
 
 
 def days(v):
     return "NR" if not np.isfinite(v) else f"{v:g}"
-
-
-def km_cell(r):
-    return f"{days(r['median'])}; {r['n']}/{r['events']}"
 
 
 def km_ci(r, dash="-"):
@@ -178,48 +167,6 @@ def conditional_agreement(lines, pairs):
                          for s in SITE_GROUPS for p in [pairs[pairs.SITE.eq(s)]]])
 
 
-def event_concordance(agreement):
-    return pd.DataFrame([{"BPC site": r.SITE, "Same-regimen pairs": f"{r.PAIRS:,}",
-                          "Same event indicator": frac(r.SAME_LABEL, r.PAIRS),
-                          "Cohen's kappa": f"{r.KAPPA:.3f}"} for r in agreement.itertuples()])
-
-
-def duration_agreement(pairs):
-    same = pairs[pairs.SAME_LABEL]
-    return pd.DataFrame([{"BPC site": s, "Median PFS difference, days": d.DIFF.median(),
-                          "Lin's CCC": f"{G.lin_ccc(d.OUR_PFS_DAYS, d.BPC_PFS_DAYS):.3f}"}
-                         for s in SITE_GROUPS for d in [same[same.SITE.eq(s)]]])
-
-
-def lines_per_patient(lines, ref):
-    out = []
-    for name, frame in [("Episodes formed by our algorithm", lines),
-                        ("Non-LHRH BPC regimens with PFS labels", same_patients(ref, lines))]:
-        def cell(site, frame=frame):
-            patients = lines.loc[lines.SITE.eq(site), "PATIENT_ID"].unique()
-            n = frame[frame.SITE.eq(site)].groupby("PATIENT_ID").size().reindex(patients, fill_value=0)
-            return f"{n.mean():.1f}; {n.median():g} ({n.quantile(.25):g}-{n.quantile(.75):g})"
-        out.append({"Per patient: mean; median (IQR)": name, **site_columns(cell)})
-    return pd.DataFrame(out)
-
-
-def boundary_agreement(lines, ref):
-    ref = same_patients(ref, lines)
-    delta = G.nearest_abs(ref, "START", lines, "LINE_START")
-    return pd.DataFrame([{"BPC regimen start near a reconstructed start": f"Within {tol} days",
-                          **site_columns(lambda s: frac((delta[ref.SITE.eq(s).to_numpy()] <= tol).sum(),
-                                                       ref.SITE.eq(s).sum()))}
-                         for tol in (14, 28)])
-
-
-def regimen_fate(mixed, ref):
-    ref = same_patients(ref, mixed)
-    r = pair_rows(mixed, ref, "mixed_time", "mixed_event", retained_only=False)
-    qc = r[r.B_ID.notna() & r.STAGE.eq("excluded_qc")]
-    return pd.DataFrame([{"QC-excluded matching BPC regimens": "Same drugs; starts within 14 days",
-                          **site_columns(lambda s: frac(qc.SITE.eq(s).sum(), ref.SITE.eq(s).sum()))}])
-
-
 def unmatched_causes(mixed, courses, regimens, ref):
     r = pair_rows(mixed, ref, "mixed_time", "mixed_event")
     unmatched = r[r.B_ID.isna()]
@@ -278,73 +225,3 @@ def breakdown(category, site, rows, unit, total):
     masks = [(row, category.eq(row)) for row in rows] + [(label, category.isin(members))]
     return pd.DataFrame([{"": row, **{f"{s} ({n[s]:,} {unit})": cell(mask, s) for s in SITE_GROUPS}}
                          for row, mask in masks])
-
-
-def regimen_breakdown(r):
-    return breakdown(r.CATEGORY, r.SITE, REGIMEN_ROWS[:3], "episodes",
-                     ("Same regimen or a listed grouping difference", REGIMEN_ROWS[:3]))
-
-
-def endpoint_breakdown(pairs):
-    exact = "Same label and exact PFS duration"
-    censoring = "Censoring rules differ: BPC censors at the next regimen start or last contact"
-    category = endpoint_category(pairs).replace(
-        {ENDPOINT_ROWS[0]: exact, ENDPOINT_ROWS[2]: censoring, ENDPOINT_ROWS[3]: censoring})
-    rows = [exact, censoring, ENDPOINT_ROWS[1]]
-    return breakdown(category, pairs.SITE, rows, "pairs", ("Exact agreement or a listed endpoint-rule difference", rows))
-
-
-def harmonized_endpoint(r, positive, negative):
-    stop = np.inf if r.is_lhrh or np.isnan(r.next_start) else r.next_start
-    days = positive.get(r.record_id, B.EMPTY)
-    ok = (days >= r.start + 28) & (days < stop + 28)
-    death = r.hybrid_death_int if pd.notna(r.hybrid_death_int) and r.hybrid_death_int <= stop else np.nan
-    ends = [t for t in (days[ok].min() if ok.any() else np.nan, death) if not np.isnan(t)]
-    if ends:
-        return 1, min(ends) - r.start
-    end = min(stop, r.dob_lastalive_int)
-    n = negative.get(r.record_id, B.EMPTY)
-    n = n[(n > r.start) & (n <= end)]
-    end = n.max() if len(n) else end
-    return 0, end - r.start
-
-
-def rule_agreement(mixed, regimens, rows):
-    imaging = B.load_imaging()
-    positive = B.days_by_patient(imaging, [B.PD, B.MIXED])
-    negative = B.days_by_patient(imaging, list(B.NON_PD))
-    rows = rows.copy()
-    rows[["mixed_event", "mixed_time"]] = [harmonized_endpoint(r, positive, negative) for r in rows.itertuples()]
-    pairs = matched_pairs(mixed, reference_regimens(rows, regimens))
-    return pd.DataFrame([{"BPC site": s, "Exact agreement after three endpoint rule changes":
-                          frac(pairs.EXACT[pairs.SITE.eq(s)].sum(), pairs.SITE.eq(s).sum())}
-                         for s in SITE_GROUPS])
-
-
-def external_counts(rows):
-    design = B.validation_labels(pd.read_csv(P.DESIGN_MATRIX_OUT, usecols=["PATIENT_ID", "LINE"]), rows)
-    return pd.DataFrame([{"External validation site": site, "Regimens": len(d), "Patients": d.PATIENT_ID.nunique()}
-                         for site in ("DFCI", "VICC") for d in [design[design.PATIENT_ID.str.contains(f"-{site}-")]]])
-
-
-def generate():
-    d = reconstruction()
-    parts = ["Reconstruction agreement. BPC PFS-I + Mixed.",
-             "A match requires the same patient, the same named drug set without GnRH agents, and starts within 14 days.",
-             "The study algorithm uses a 28-day grace period, a 90-day prior-imaging window, and a 730-day cap.",
-             "Subtotals are category sums. They are not agreement after a rule change.",
-             "Same regimen or a listed grouping difference",
-             show(regimen_breakdown(regimen_category(d.lines, d.courses, d.regimens, d.ref))),
-             "Exact agreement or a listed endpoint-rule difference", show(endpoint_breakdown(d.pairs)),
-             "Event-indicator agreement", show(event_concordance(conditional_agreement(d.lines, d.pairs))),
-             "PFS duration, among pairs with the same label", show(duration_agreement(d.pairs)),
-             "Cohort flow", show(retained_flow(d.lines, d.g, d.ref)),
-             "Lines per patient", show(lines_per_patient(d.lines, d.ref)),
-             "QC exclusions, as a share of labelled BPC regimens", show(regimen_fate(d.lines, d.ref)),
-             "Nearest-start counts; no drug condition", show(boundary_agreement(d.lines, d.ref)),
-             "Exact agreement after three endpoint rule changes",
-             show(rule_agreement(d.lines, d.regimens, d.rows)),
-             "External validation cohort", show(external_counts(d.rows)),
-             "Source rules: BPC starts a new regimen after a break of 8 weeks.",
-             "References 15 and 16 are external source identifiers."]
-    return "\n\n".join(parts) + "\n"

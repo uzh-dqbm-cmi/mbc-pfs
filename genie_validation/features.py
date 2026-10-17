@@ -49,6 +49,7 @@ class FeatureContext:
         return self.labels[["PATIENT_ID", "LINE", "LINE_START"]].copy()
 
     def cancer_per_line(self, cols: List[str]) -> pd.DataFrame:
+        """Attach per-cancer ``cols`` to each line via (PATIENT_ID, CA_SEQ)."""
         right = self.cancer.rename(columns={"record_id": "PATIENT_ID", "ca_seq": "CA_SEQ"})
         right = right[["PATIENT_ID", "CA_SEQ", *cols]].copy()
         right["PATIENT_ID"] = right["PATIENT_ID"].astype(str)
@@ -357,6 +358,7 @@ def build_cancer_presence(ctx: FeatureContext) -> FrameAndMappings:
     })
     for part in body_parts:
         measurements[part] = parts.map(lambda s, p=part: 1 if p in s else 0).astype(int).values
+    # drop scans that imaged nothing recognizable
     measurements = measurements[measurements[body_parts].sum(axis=1) > 0].reset_index(drop=True)
 
     result = aggregate_cancer_presence_features(
@@ -410,7 +412,8 @@ def build_tumor_sites(ctx: FeatureContext) -> FrameAndMappings:
             tcol = f"dx_to_{g}_days"
             t = pd.to_numeric(frame.get(tcol), errors="coerce").to_numpy(dtype=float)
             cand = np.where(flag, t, np.nan)
-            onset = np.fmin(onset, cand)
+            onset = np.fmin(onset, cand)  # nan-aware min
+        # fallbacks for a present-but-undated site
         need_fallback = present & np.isnan(onset)
         onset = np.where(need_fallback, dmets_overall, onset)
         still = present & np.isnan(onset) & is_iv
@@ -441,17 +444,19 @@ def build_genomics(ctx: FeatureContext) -> FrameAndMappings:
     amp_genes = [c[len("GENOMICS_AMPLIFICATION_"):] for c in cols if c.startswith("GENOMICS_AMPLIFICATION_")]
     del_genes = [c[len("GENOMICS_DELETION_"):] for c in cols if c.startswith("GENOMICS_DELETION_")]
 
+    # one representative panel sample per patient: earliest NGS report.
     panel = ctx.panel.copy()
     panel["record_id"] = panel["record_id"].astype(str)
     panel["dx_cpt_rep_days"] = pd.to_numeric(panel["dx_cpt_rep_days"], errors="coerce")
     panel = panel.sort_values(["record_id", "dx_cpt_rep_days"], kind="mergesort")
     rep = panel.drop_duplicates("record_id", keep="first")
     patient_to_sample = dict(zip(rep["record_id"], rep["cpt_genie_sample_id"].astype(str)))
+    # NGS report day (days from diagnosis) of that sample, for no-lookahead gating
     patient_to_seqday = dict(zip(rep["record_id"], rep["dx_cpt_rep_days"]))
 
     mut = ctx.mutations
     mut_by_sample = mut.groupby("Tumor_Sample_Barcode")["Hugo_Symbol"].agg(set).to_dict()
-    cna = ctx.cna
+    cna = ctx.cna  # index Hugo_Symbol, columns samples
     cna_samples = set(cna.columns)
 
     rows = []

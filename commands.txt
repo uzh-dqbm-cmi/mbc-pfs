@@ -31,34 +31,26 @@ python -m analyses.cohort_selection.eligibility_inputs
 
 # 6. Added model fits on the original outer folds (heavy)
 python -m analyses.common.survival --fit ref_mlot1_ca15_3
-python -m analyses.common.survival --fit clinical_cox
 python -m analyses.common.survival --fit gbsa_no_line_missingness
 python -m analyses.common.survival --fit gbsa_site_count
 
 # 7. Patient-bootstrap intervals (heavy)
 python -m analyses.common.ibs_bootstrap
 python -m analyses.common.primary_bootstrap
-python -m analyses.ablation_inference
-python -m analyses.ablation_inference --metrics
 
-# 8. Calibration and external reference model (heavy)
+# 8. Calibration and external evaluation (heavy)
 python -m analyses.calibration
 python -m analyses.external_validation
 python -m analyses.pooled_calibration
 
-# 9. Cohort-selection sensitivity analyses (heavy: code, qc_refit, qc_refit_eval, qc_calibration_bootstrap)
+# 9. Cohort-selection sensitivity analyses (heavy: qc_refit, qc_refit_eval)
 python -m analyses.cohort_selection.imaging_eligibility
 python -m analyses.cohort_selection.qc_sensitivity
 python -m analyses.cohort_selection.qc_late_start
 python -m analyses.cohort_selection.qc_refit
 python -m analyses.cohort_selection.qc_refit_eval
-python -m analyses.cohort_selection.qc_calibration_bootstrap
 python -m analyses.cohort_selection.bpc_agreement_pre_qc
 
-# 10. Day-28 landmark
-python -m analyses.treatment_window
-
-# 11. Additional analysis summaries, figures, manuscript_data.txt and extended_data.txt
-python analysis_reports.py
+# 10. Figures, manuscript_data.txt and extended_data.txt
 python analyses/calibration_figures.py
 python manuscript.py

@@ -35,6 +35,8 @@ def _impute_tumor_marker_features(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def recency_weights(days_before: np.ndarray, tau: float) -> np.ndarray:
+    """Return normalized exponential-decay weights for recency aggregation."""
+
     days_before = np.asarray(days_before, dtype=float)
     weights = np.exp(-days_before / float(tau))
     total = weights.sum()
@@ -52,6 +54,8 @@ def aggregate_biomarkers(
     tau_short: float,
     tau_long: float,
 ) -> pd.DataFrame:
+    """Aggregate long-form biomarker measurements into per-line log summaries."""
+
     cutoff_map = {"CA15_3": 30.0, "CEA": 5.0}
     rows: List[Dict[str, float]] = []
 
@@ -81,7 +85,9 @@ def aggregate_biomarkers(
 
             if test_history.empty:
                 continue
+            # sort by start date again just in case
             test_history = test_history.sort_values(START_DATE_COL)
+            # log-transform and avoid issues with 0
             raw_values = test_history["RESULT"].to_numpy(dtype=float)
             values = np.log1p(raw_values)
             days_before = line_start - test_history[START_DATE_COL].to_numpy(dtype=int)
@@ -116,17 +122,20 @@ def aggregate_biomarkers(
                             scoped_values[-1] - scoped_values[-2]
                         )
                     else:
+                        # all samples same day → skip slope/delta
                         row[f"{prefix}_SLOPE"] = np.nan
                         row[f"{prefix}_DELTA_LAST"] = np.nan
                 last_obs_day = float(scoped_days[-1])
                 last_obs_log = float(scoped_values[-1])
             row[f"{out_key}_LAST_OBS_LOG"] = last_obs_log
             row[f"{out_key}_LAST_OBS_DAY"] = last_obs_day
+            # short vs long contrasts if both available
             short_mean = row[f"{out_key}_SHORT_RW_MEAN"]
             long_mean = row[f"{out_key}_LONG_RW_MEAN"]
             if not np.isnan(short_mean) and not np.isnan(long_mean) and long_mean != 0:
                 row[f"{out_key}_SHORT_OVER_LONG"] = float(short_mean / long_mean)
                 row[f"{out_key}_SHORT_MINUS_LONG"] = float(short_mean - long_mean)
+            # threshold flags using raw values
             last_raw = raw_values[-1]
             cutoff = cutoff_map.get(out_key)
             if cutoff is not None and last_raw > cutoff:
@@ -146,10 +155,14 @@ def aggregate_biomarkers(
 
 def build_tumor_marker_features(ctx) -> ModalityFrame:
     tumor_markers = pd.read_csv(ctx.data_dir / TUMOR_MARKER_FILE, sep="\t")
+    # Preserve original row order so same-day duplicates can be deterministically resolved
+    # by selecting the last recorded measurement for that day.
     tumor_markers["_ROW_ID"] = np.arange(tumor_markers.shape[0], dtype=int)
     tumor_markers = filter_and_sort_input(tumor_markers, ctx.type_specific_patients)
 
+    # filter out only CEA and CA15-3 results
     cols = [PATIENT_ID_COL, START_DATE_COL, TEST_COL, RESULT_COL, "_ROW_ID"]
+    # if there is NA in any of these columns, create a warning, then drop
     if tumor_markers.loc[:, cols].isna().any().any():
         print("Warning: NA values found in tumor marker measurements")
     tumor_markers = tumor_markers.loc[:, cols].dropna()
@@ -160,6 +173,9 @@ def build_tumor_marker_features(ctx) -> ModalityFrame:
     tumor_markers[START_DATE_COL] = tumor_markers[START_DATE_COL].astype(int)
     tumor_markers[RESULT_COL] = tumor_markers[RESULT_COL].astype(float)
 
+    # Aggregate per day: keep the last recorded measurement for each (patient, date, test).
+    # This avoids unstable behavior when there are multiple measurements on the same day
+    # (previously, *_DELTA_LAST could flip sign depending on tie-order).
     tumor_markers = tumor_markers.sort_values(
         [PATIENT_ID_COL, START_DATE_COL, TEST_COL, "_ROW_ID"],
         kind="mergesort",
@@ -181,6 +197,7 @@ def build_tumor_marker_features(ctx) -> ModalityFrame:
 
     features = _impute_tumor_marker_features(features)
 
+    # drop monitoring patterns, i.e. the _COUNT columns
     drop_cols = [col for col in features.columns if col.endswith("_COUNT")]
     features = features.drop(columns=drop_cols)
 

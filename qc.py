@@ -4,6 +4,7 @@ import pandas as pd
 def agent_to_equiv_group(agent: str) -> str:
     agent = str(agent).upper().strip()
 
+    # Endocrine
     if agent in {"LETROZOLE", "ANASTROZOLE", "EXEMESTANE"}:
         return "ENDO_AI"
     if agent in {"FULVESTRANT"}:
@@ -15,9 +16,11 @@ def agent_to_equiv_group(agent: str) -> str:
     if agent in {"MEGESTROL"}:
         return "ENDO_PROGESTIN"
 
+    # CDK4/6
     if agent in {"PALBOCICLIB", "RIBOCICLIB", "ABEMACICLIB"}:
         return "CDK46I"
 
+    # PI3K / AKT / mTOR
     if agent in {"ALPELISIB"}:
         return "PI3KI"
     if agent in {"CAPIVASERTIB"}:
@@ -25,9 +28,11 @@ def agent_to_equiv_group(agent: str) -> str:
     if agent in {"EVEROLIMUS"}:
         return "MTORI"
 
+    # PARP
     if agent in {"OLAPARIB", "TALAZOPARIB"}:
         return "PARPI"
 
+    # HER2
     if agent in {
         "TRASTUZUMAB",
         "PERTUZUMAB",
@@ -47,9 +52,11 @@ def agent_to_equiv_group(agent: str) -> str:
     if agent in {"LAPATINIB", "NERATINIB", "TUCATINIB"}:
         return "HER2_TKI"
 
+    # Immunotherapy
     if agent in {"PEMBROLIZUMAB", "ATEZOLIZUMAB", "NIVOLUMAB", "DURVALUMAB"}:
         return "IMMUNO_IO"
 
+    # Chemo (common buckets)
     if agent in {"PACLITAXEL", "DOCETAXEL", "PACLITAXEL PROTEIN-BOUND"}:
         return "CHEMO_TAXANE"
     if agent in {"CARBOPLATIN", "CISPLATIN"}:
@@ -75,6 +82,7 @@ def agent_to_equiv_group(agent: str) -> str:
     if agent in {"ETOPOSIDE"}:
         return "CHEMO_ETOPOSIDE"
 
+    # Angiogenesis/other biologics
     if agent in {"BEVACIZUMAB"}:
         return "BIO_ANGIO"
 
@@ -89,6 +97,16 @@ def qc_from_received_flags(
     her2_col: str = "HER2",
     verbose: bool = True,
 ) -> pd.DataFrame:
+    """
+    Flag QC hard failures using binary RECEIVED_* features instead of raw timelines.
+
+    Existing reasons:
+      * HRneg_endocrine
+      * chemo+hormone in same LoT (also tagged as endo+chemo_overlap_any_line)
+      * HER2neg_HER2target_review
+      * IO_without_chemo_review
+    """
+
     work = df.copy()
 
     def _flag(col: str) -> pd.Series:
@@ -140,6 +158,7 @@ def qc_from_received_flags(
 
     work["QC_HARD_FAIL"] = qc_hard_fail
     work["QC_REASONS"] = [_reasons(i) for i in range(len(work))]
+    # set PFS_EVENT to -1 for QC hard fails
     work.loc[qc_hard_fail, "PFS_EVENT"] = -1
 
     if verbose:

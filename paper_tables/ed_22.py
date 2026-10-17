@@ -25,5 +25,7 @@ def build(ctx):
         columns=["Evaluation set", "Lines", "C"])
     _, delta, low, high, _ = paired_test("", single["mean"] - gbsa["C"],
                                          single["leave_out"] - leave_one_out(gbsa["num"], gbsa["den"]))
-    note = f"Mean one-line minus pooled C: {delta:+.5f} (95% patient-jackknife CI {low:+.5f} to {high:+.5f})."
-    return [Panel("", pairs), Panel("(continued) One randomly selected line per patient", selections, note)]
+    paired = pd.DataFrame([{"Comparison": "Mean one-line minus pooled C", "ΔC": f"{delta:+.5f}",
+                            "95% patient-jackknife CI": f"{low:+.5f} to {high:+.5f}"}])
+    return [Panel("", pairs), Panel("(continued) One randomly selected line per patient", selections),
+            Panel("(continued) Paired difference", paired)]

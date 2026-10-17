@@ -18,6 +18,8 @@ def aggregate_cancer_presence_features(
     body_parts: Iterable[str],
     window_days: int,
 ) -> pd.DataFrame:
+    """Five-state body-part features: Y/N/Indet/not-imaged + ever-positive."""
+
     rows: List[Dict[str, float]] = []
 
     for pid, line_id, line_start, history in iter_measurements_before_line(
@@ -50,6 +52,7 @@ def aggregate_cancer_presence_features(
 
             recent = history.loc[part_mask & history["DAYS_AGO"].le(window_days)].copy()
             if recent.empty:
+                # keep MISSING=1, others already 0
                 continue
 
             row[f"{base}_MISSING"] = 0

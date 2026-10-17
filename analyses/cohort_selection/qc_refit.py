@@ -1,5 +1,4 @@
 import argparse
-import json
 import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
@@ -12,7 +11,6 @@ import joblib
 import numpy as np
 import pandas as pd
 from sksurv.ensemble import GradientBoostingSurvivalAnalysis
-from sksurv.linear_model import CoxPHSurvivalAnalysis
 
 from preprocess import preprocess_df
 from analyses.cohort_selection.qc_sensitivity import excluded_lines, outer_folds, score_excluded
@@ -20,7 +18,6 @@ from analyses.cohort_selection.qc_sensitivity import excluded_lines, outer_folds
 OUT = Path("results/rebuttal/qc_refit")
 CLASSIFICATION = Path("results/rebuttal/eligibility/late_start/line_classification.csv")
 IDENTITY = ["PATIENT_ID", "LINE", "LINE_START", "PFS_TIME_DAYS", "PFS_EVENT"]
-SIX = ["IS_MLOT1", "HR", "HER2", "ECOG_LAST_OBS", "TUMOR_SITE_LIVER_IN_WINDOW", "CA15_3_LAST_OBS_LOG"]
 META_COLS = ["CATEGORY", "LATE_START", "QC_CHEMO_ENDO", "QC_HRNEG", "ADD_DAY", "START_CLASS", "SUBTYPE", "FIRST_LINE"]
 GNRH_CATEGORIES = ("Co-prescription: GnRH agent only (no other endocrine agent in the line)",
                    "Co-prescription: GnRH agent at start, non-GnRH endocrine added after day 28")
@@ -40,14 +37,6 @@ def variant_mask(name, meta):
     if name == "qc_all":
         return np.ones(len(meta), bool)
     raise ValueError(name)
-
-
-def restated_rule_note():
-    original, added, meta, _, _ = load_inputs()
-    late, restated = variant_mask("late525", meta), variant_mask("restated_rule", meta)
-    gnrh = restated & ~late
-    return (f"Restated-rule variant: {len(original) + restated.sum():,} lines = {len(original):,} retained + {late.sum():,} "
-            f"late-start + {gnrh.sum():,} GnRH-group lines ({added.HR[gnrh].eq(1).sum():,} HR-positive).")
 
 
 def load_inputs():
@@ -94,7 +83,7 @@ def fit_one(name, fold, force=False):
     features, info = build_cohort(name, original, added, meta)
     out = OUT / name / fold
     out.mkdir(parents=True, exist_ok=True)
-    if (out / "surv_test.npz").exists() and (out / "surv_test_reference.npz").exists() and not force:
+    if (out / "surv_test.npz").exists() and (out / "model.joblib").exists() and not force:
         return f"{name}/{fold}: reused."
     train, test = fold_rows(splits[fold], info, fold)
     assert not set(features.PATIENT_ID.iloc[train]) & set(features.PATIENT_ID.iloc[test])
@@ -112,15 +101,6 @@ def fit_one(name, fold, force=False):
         note = f" baseline check: grid {'equal' if same_grid else 'DIFFERENT'}, max |diff| vs saved curves {diff:.2e}."
     np.savez_compressed(out / "surv_test.npz", time=model.unique_times_[keep], surv=curves[:, keep], idx_test=test)
     joblib.dump(model, out / "model.joblib")
-    names = prep["numeric_cols"] + prep["binary_cols"]
-    json.dump(sorted(zip(names, map(float, model.feature_importances_)), key=lambda kv: -kv[1]),
-              open(out / "importance.json", "w"), indent=1)
-    frame = features[IDENTITY + SIX]
-    prep_ref = preprocess_df(train, test, test, frame)
-    cox = CoxPHSurvivalAnalysis(alpha=1.0, ties="efron", n_iter=1000).fit(prep_ref["X_train_np"], prep_ref["y_train_sksurv"])
-    ref = cox.predict_survival_function(prep_ref["X_test_np"], return_array=True)
-    keep_ref = cox.unique_times_ < 730
-    np.savez_compressed(out / "surv_test_reference.npz", time=cox.unique_times_[keep_ref], surv=ref[:, keep_ref], idx_test=test)
     return (f"{name}/{fold}: trained on {len(train):,} lines ({(train >= len(original)).sum():,} restored), tested on {len(test):,} "
             f"({(test >= len(original)).sum():,} restored); {monotonic() - started:.0f} s.{note}")
 

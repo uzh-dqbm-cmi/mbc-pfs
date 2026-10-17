@@ -1,3 +1,18 @@
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.2
+#   kernelspec:
+#     display_name: .venv
+#     language: python
+#     name: python3
+# ---
+
+# %%
 from __future__ import annotations
 
 import argparse
@@ -31,14 +46,16 @@ from data_paths import data_dir
 
 
 def build_pfs_lines(window_days: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    # Step 1: filter to breast-only primary diagnoses.
     diag, patient_ids, stage_iv_patients = prep_diagnosis()
     first_metastasis = first_metastasis_start_dates(patient_ids)
 
     print(f"Step 1 — Breast-only patients: {len(patient_ids):,}")
 
-    ref = pd.read_csv(MSK_DATA_DIR / "brca_dx_1st_seq_OS.csv")
+    ref = pd.read_csv("data/brca_dx_1st_seq_OS.csv")
     assert patient_ids.issubset(ref[PATIENT_ID_COL].unique())
 
+    # Step 2: load treatment/progression timelines, drop Bone treatment, and keep patients with both data types.
     treatment = _norm(pd.read_csv(MSK_DATA_DIR / "data_timeline_treatment.tsv", sep="\t"))
     treatment = treatment[treatment[PATIENT_ID_COL].isin(patient_ids)]
     treatment = treatment[treatment["SUBTYPE"] != "Bone Treatment"]
@@ -60,9 +77,11 @@ def build_pfs_lines(window_days: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
         f"  Progression records: {len(progression):,} across {progression[PATIENT_ID_COL].nunique():,} patients"
     )
 
+    # sanity checks before proceeding
     assert not progression["START_DATE"].isnull().any()
     assert not treatment["START_DATE"].isnull().any()
 
+    # by each patient that's not stage 4 by diagnosis, only consider progression and treatment entries after first_metastasis_by_patient
     progression = after_metastasis(progression, stage_iv_patients, first_metastasis)
     treatment = after_metastasis(treatment, stage_iv_patients, first_metastasis)
 
@@ -113,6 +132,9 @@ def build_pfs_lines(window_days: int) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def check_event_labels(pfs: pd.DataFrame) -> None:
+    # only labelled_by_progression_event and labelled_by_death_event should have PFS_EVENT = 1
+    # only labelled_by_non_progression should have PFS_EVENT = 0
+    # all others should have PFS_EVENT = -1
     expected_event_labels = {
         "labelled_by_progression_event": 1,
         "labelled_by_death_event": 1,
@@ -174,22 +196,28 @@ def main(window_days: int = LINE_START_WINDOW_DAYS) -> None:
     diag, pfs = build_pfs_lines(window_days)
     diag.to_csv(out_dir / "diagnosis_parsed.csv", index=False)
     check_event_labels(pfs)
+    # set PFS_TIME_DAYS < 28 to another label
     pfs = flag_short_lines(pfs)
     print("PFS LINE_SOURCE value counts:")
     print(pfs["LINE_SOURCE"].value_counts())
     print(f"Total patients before filtering: {pfs[PATIENT_ID_COL].nunique()}")
     print(f"Total lines before filtering: {len(pfs):,}")
 
+    # # Step 3: apply administrative censoring and persist PFS table.
+    # typecast pfs TIME_COL to Float32
     pfs[TIME_COL] = pfs[TIME_COL].astype("Float32")
     pfs = apply_censor(pfs)
+    # save dropped pfs lines for record-keeping
     pfs[pfs[EVENT_COL] == -1].reset_index(drop=True).to_csv(
         out_dir / f"{CANCER_TYPE}_dropped_pfs_lines.csv", index=False
     )
+    # save only patients with EVENT_COL != -1
     pfs = pfs[pfs[EVENT_COL] != -1].reset_index(drop=True)
     print(f"Total patients after filtering: {pfs[PATIENT_ID_COL].nunique()}")
     print(f"Total lines after filtering: {len(pfs):,}")
     pfs.to_csv(out_dir / f"{CANCER_TYPE}_pfs.csv", index=False)
 
+    # Step 4: assemble the design matrix and persist it via build_design_matrix_pipeline.
     design_matrix = build_design_matrix_pipeline(window_days)
     print(f"Final usable lines in design matrix: {design_matrix.shape}")
     print(f"unique patients in design matrix: {design_matrix[PATIENT_ID_COL].nunique():,}")

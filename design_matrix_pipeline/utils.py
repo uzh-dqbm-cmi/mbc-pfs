@@ -12,6 +12,12 @@ def filter_and_sort_input(
     df: pd.DataFrame,
     patient_ids: Optional[Iterable[str]] = None,
 ) -> pd.DataFrame:
+    """Normalize column names, filter to the provided patient ids, and coerce dates.
+
+    The returned dataframe is sorted by ``PATIENT_ID`` and, when available,
+    ``START_DATE``.
+    """
+
     out = df.copy()
     out.columns = [c.strip().upper().replace(" ", "_") for c in out.columns]
     if patient_ids is not None:
@@ -26,6 +32,8 @@ def filter_and_sort_input(
     if "_ROW_ID" in out.columns:
         out.loc[:, "_ROW_ID"] = _to_int(out["_ROW_ID"])
         sort_cols.append("_ROW_ID")
+    # Use a stable sort so ties (e.g., multiple measurements on the same START_DATE)
+    # preserve deterministic input order.
     out = out.sort_values(sort_cols, kind="mergesort").reset_index(drop=True)
     return out
 
@@ -39,6 +47,13 @@ def iter_measurements_before_line(
     start_date_col: str = "START_DATE",
     include_same_day_measurement: bool = False,
 ) -> Iterable[tuple[str, int, float, pd.DataFrame]]:
+    """Yield measurement history for each patient-lot combination.
+
+    For each patient, lot combination, this generator yields the patient id, lot
+    number, lot start, and the slice of ``measurements`` containing all
+    observations recorded on or before the lot start.
+    """
+
     side = "right" if include_same_day_measurement else "left"
 
     patient_lot_info = patient_lot_info.sort_values(
@@ -67,6 +82,7 @@ def iter_measurements_before_line(
             current_line_start = int(line_row[line_start_col])
             pos = np.searchsorted(measurement_dates, current_line_start, side=side)
             history = patient_values.iloc[:pos].copy()
+            # make sure the history is sorted by start_date_col
             if not history[start_date_col].is_monotonic_increasing:
                 raise ValueError(
                     f"History for patient {pid}, line {line_row[line_col]} is not sorted by {start_date_col}"

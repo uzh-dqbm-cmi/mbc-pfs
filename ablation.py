@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+"""Run outer-fold modality ablations using existing cv_splits/* files."""
+
 from __future__ import annotations
 
 import argparse
@@ -47,6 +50,7 @@ def main() -> None:
     ap.add_argument(
         "--runner",
         required=True,
+        # fixed string of cpu or dl
         type=str,
         choices=["cpu", "dl"],
     )

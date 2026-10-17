@@ -46,6 +46,7 @@ def assemble_design_matrix(
 
     temporal_frames = [m for m in modalities if m.temporal]
     static_frames = [m for m in modalities if not m.temporal]
+    # set all column names to uppercase
     for frame in temporal_frames + static_frames:
         frame.frame.columns = frame.frame.columns.str.upper()
 
@@ -59,11 +60,13 @@ def assemble_design_matrix(
             how="inner",
             validate="one_to_one",
         )
+        # get names of the feature columns
         features_dict[frame.name] = frame.feature_columns().tolist()
 
     design_matrix = design_matrix.reset_index()
 
     for frame in static_frames:
+        # print out the shape of each frame and the name of it
         print(f"Merging static modality: {frame.name} with shape {frame.frame.shape}")
         design_matrix = design_matrix.merge(
             frame.frame, on="PATIENT_ID", how="inner", validate="many_to_one"

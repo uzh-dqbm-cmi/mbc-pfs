@@ -1,3 +1,19 @@
+# ---
+# jupyter:
+#   jupytext:
+#     formats: ipynb,py:percent
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.2
+#   kernelspec:
+#     display_name: .venv
+#     language: python
+#     name: python3
+# ---
+
+# %%
 import os
 import warnings
 from copy import deepcopy
@@ -49,6 +65,7 @@ def train_deephit(
         ignore_prefix=config.get("ignore_prefix"),
     )
     with warnings.catch_warnings():
+        # PyCox emits a noisy warning when quantile cuts are duplicated; swallow it.
         warnings.filterwarnings(
             "ignore",
             message=r"cuts are not unique, continue with .*",

@@ -1,5 +1,20 @@
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.2
+#   kernelspec:
+#     display_name: msk
+#     language: python
+#     name: msk
+# ---
+
 from pathlib import Path
 
+# %%
 import joblib
 import numpy as np
 import pandas as pd
@@ -15,6 +30,7 @@ from utils import (
 )
 
 
+# %%
 def train_rsf(
     train_idx: np.ndarray,
     val_idx: np.ndarray,

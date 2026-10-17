@@ -5,7 +5,6 @@ import joblib
 import numpy as np
 import pandas as pd
 from pycox.evaluation import EvalSurv
-from tabulate import tabulate
 
 from preprocess import preprocess_df
 from analyses.common.survival import ibs_evaluator, load_curves
@@ -78,24 +77,9 @@ def main():
                          C=float(ev.concordance_td("adj_antolini")),
                          IBS=float(np.trapezoid(bs, times) / (times[-1] - times[0]))))
     result = pd.DataFrame(rows)
-    report = "\n\n".join([
-        "Performance with QC-excluded lines restored: fixed GBSA models; no model fitting.",
-        "Retain the 90-day prior-imaging rule, available PFS labels, the 28-day minimum and the 730-day cap. "
-        "Restore the labels from BREAST_pfs.csv for QC-excluded lines.",
-        f"QC-excluded patients: {added.PATIENT_ID.nunique():,}; "
-        f"{added.PATIENT_ID.nunique() - len(new_ids):,} use their original held-out fold; "
-        f"{len(new_ids):,} new patients are assigned across five folds with seed 42. "
-        "No scored patient is in the training data of the model used for that patient.",
-        "C is pooled adjusted-Antolini concordance. IBS uses the original cohort's 420 censoring times "
-        "from day 28 to day 730 for all three rows; censoring weights are estimated within each evaluated cohort. "
-        "These are point estimates with fixed models trained on the retained cohort.",
-        tabulate(result, headers="keys", showindex=False, tablefmt="psql", floatfmt=".4f", intfmt=","),
-        "Recalculate: python -m analyses.cohort_selection.qc_sensitivity",
-    ]) + "\n"
     OUT.mkdir(parents=True, exist_ok=True)
     result.to_csv(OUT / "qc_sensitivity.csv", index=False)
-    (OUT / "qc_sensitivity.txt").write_text(report)
-    print(report)
+    print(result.to_string(index=False))
 
 
 if __name__ == "__main__":

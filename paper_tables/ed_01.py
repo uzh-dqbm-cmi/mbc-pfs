@@ -9,6 +9,7 @@ TITLE = "Extended Data tables for the breast cancer subset"
 
 
 def percent(numerator, denominator):
+    # Percent within age bin
     return (100 * numerator / denominator).map("{:.1f}".format)
 
 
@@ -28,13 +29,10 @@ def by_age(dm):
     table = pd.DataFrame({"Age group": t["Age group"].astype(str).str.replace("<=", "≤").str.replace("-", "–"),
                           "HR+": percent(t["HR positive"], n), "HR-": percent(n - t["HR positive"], n),
                           "HER2+": percent(t["HER2 positive"], n), "HER2-": percent(n - t["HER2 positive"], n)})
-    note = (f"One record per patient at the first retained modeled line; {n.sum():,} patients in total. "
-            f"Age-group denominators: {', '.join(f'{x:,}' for x in n)}.")
-    return table, note
+    return table
 
 
 def build(ctx):
     dm = ctx.manuscript.dm
-    table, note = by_age(dm)
     return [Panel("a. Baseline characteristics of the breast cancer subset", baseline(dm)),
-            Panel("b. Patient-level HR/HER2 status by age at the first retained modeled line (row-wise %)", table, note)]
+            Panel("b. Patient-level HR/HER2 status by age at the first retained modeled line (row-wise %)", by_age(dm))]

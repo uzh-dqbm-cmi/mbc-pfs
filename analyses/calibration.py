@@ -1,5 +1,4 @@
 import warnings
-from tabulate import tabulate
 from time import monotonic
 from pathlib import Path
 import numpy as np
@@ -114,23 +113,6 @@ def analyze_horizon(d, site, horizon, n_boot, seed):
     return row, curve, bootstrap, failures
 
 
-def tertile_summary(data):
-    rows = []
-    for site in ("DFCI", "VICC"):
-        subset = data.loc[data.cohort.eq(site)].copy()
-        subset["risk_tertile"] = pd.qcut(subset.risk_365, 3, labels=["Low", "Middle", "High"])
-        for tertile, group in subset.groupby("risk_tertile", observed=True):
-            km = KaplanMeierFitter().fit(group.PFS_TIME_DAYS, group.PFS_EVENT)
-            for horizon in HORIZONS:
-                rows.append(dict(cohort=site, risk_tertile=tertile, horizon=horizon,
-                    n_lines=len(group), n_patients=group.PATIENT_ID.nunique(),
-                    risk_365_min=group.risk_365.min(), risk_365_max=group.risk_365.max(),
-                    predicted_survival=float((1-group[f"risk_{horizon}"]).mean()),
-                    observed_KM_survival=float(km.predict(horizon)),
-                    n_at_risk=int(group.PFS_TIME_DAYS.ge(horizon).sum())))
-    return pd.DataFrame(rows)
-
-
 def cell(r, key):
     scale, digits = SCALE[key]
     return f"{scale * r[key]:.{digits}f} [{scale * r[f'{key}_lo']:.{digits}f}, {scale * r[f'{key}_hi']:.{digits}f}]"
@@ -158,27 +140,6 @@ def main():
     pd.DataFrame(rows).to_csv(OUT / "metrics.csv", index=False)
     pd.concat(curves, ignore_index=True).to_csv(OUT / "curves.csv", index=False)
     pd.concat(bootstraps, ignore_index=True).to_csv(OUT / "bootstrap_metrics.csv", index=False)
-    tertile_summary(data).to_csv(OUT / "external_tertile_summary.csv", index=False)
-
-
-def generate(context=None):
-    metrics = pd.read_csv(OUT / "metrics.csv")
-    parts = ["Fixed-model calibration at 180, 365, and 730 days.",
-             "Intervals use 1,000 patient resamples. External probabilities average five models.",
-             "External endpoint: BPC PFS-I + Mixed; minimum duration 28 days; cap 730 days.",
-             "CITL uses log odds. ICI, E50, and E90 use percentage points."]
-    for site in COHORTS:
-        parts.extend([site, tabulate(calibration_table(metrics, site), headers="keys", showindex=False, tablefmt="psql")])
-    support = metrics[["cohort", "horizon", "n_lines", "n_patients",
-                       "n_observed_event_free_through_horizon",
-                       "n_patients_at_risk_just_before_horizon"]]
-    parts.extend(["Cohort and horizon support", tabulate(support, headers="keys", showindex=False,
-                  tablefmt="psql"), "External survival by predicted-risk tertile",
-                  tabulate(pd.read_csv(OUT / "external_tertile_summary.csv"), headers="keys",
-                           showindex=False, tablefmt="psql", floatfmt=".4f"),
-                  "Recalculate: python -m analyses.calibration",
-                  f"Inputs: {FROZEN}."])
-    return "\n\n".join(parts) + "\n"
 
 
 if __name__ == "__main__":

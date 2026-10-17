@@ -18,13 +18,17 @@ from matplotlib.lines import Line2D
 from config import EVENT_COL, PATIENT_ID_COL, RANDOM_STATE, TIME_COL
 from survival_metrics import km_curve, mae_pred_vs_km, rmst_from_curve
 
+# plotting utilities used by manuscript.py
+
+
+# Shared color cycle (blue/orange/green theme) used across plots.
 PROJECT_COLOR_CYCLE: list[str] = [
-    "#1f4e79",
-    "#d97706",
-    "#166534",
-    "#5499c7",
-    "#f59e0b",
-    "#22c55e",
+    "#1f4e79",  # blue (dark)
+    "#d97706",  # orange (dark)
+    "#166534",  # green (dark)
+    "#5499c7",  # blue (light)
+    "#f59e0b",  # orange (light)
+    "#22c55e",  # green (light)
 ]
 
 SURVIVAL_X_LIMIT = (0, 730)
@@ -65,11 +69,12 @@ STYLE = {
 }
 
 
+# Risk stratification constants (moved from risk_figures.py)
 STRATA_LABELS: tuple[str, str, str] = ("low", "mid", "high")
 STRATA_COLORS: dict[str, str] = {
-    "low": PROJECT_COLOR_CYCLE[0],
-    "mid": PROJECT_COLOR_CYCLE[1],
-    "high": PROJECT_COLOR_CYCLE[2],
+    "low": PROJECT_COLOR_CYCLE[0],  # blue
+    "mid": PROJECT_COLOR_CYCLE[1],  # orange
+    "high": PROJECT_COLOR_CYCLE[2],  # green
 }
 
 
@@ -206,6 +211,7 @@ def plot_mean_surv_late_start(
     all_idx = np.arange(surv_clean.shape[0], dtype=int)
     rest_idx = np.setdiff1d(all_idx, late_start_idx)
 
+    # Colors: blues for clean, oranges for leakage, greens for KM.
     c_rest_clean = PROJECT_COLOR_CYCLE[0]
     c_late_clean = PROJECT_COLOR_CYCLE[3]
     c_rest_leak = PROJECT_COLOR_CYCLE[1]
@@ -442,6 +448,8 @@ def plot_mean_surv_late_start_systemic_vs_local_clean_leakage(
 
 
 def _align_series(entry, time_points: Sequence[float]) -> tuple[np.ndarray, np.ndarray, np.ndarray, int]:
+    # dataclass-like support
+    """Normalize mean/std series from flexible dict formats and sample if needed."""
     times = np.asarray(entry.times, dtype=float).reshape(-1)
     order = np.argsort(times)
     times = times[order]
@@ -645,6 +653,7 @@ def plot_shap_summary_from_arrays(
     dpi: int,
     output_path: Union[str, Path],
 ) -> Path:
+    """Plot SHAP summary using in-memory arrays."""
     plt.rcParams.update(STYLE)
     shap_values = np.asarray(shap_values, dtype=float)
     X = np.asarray(X, dtype=float)
@@ -666,6 +675,7 @@ def plot_shap_summary_from_arrays(
     ]
     fig, ax = plt.subplots(figsize=figsize, dpi=dpi)
     plt.sca(ax)
+    # SHAP summary (beeswarm) uses random jitter for point placement; fix RNG for determinism.
     rng_state = np.random.get_state()
     np.random.seed(int(RANDOM_STATE))
     shap.summary_plot(
@@ -696,6 +706,7 @@ def plot_single_sample_shap_waterfall_from_arrays(
     dpi: int,
     output_path: Union[str, Path],
 ) -> Path:
+    """Plot a waterfall for one sample using in-memory SHAP arrays."""
     plt.rcParams.update(STYLE)
     shap_values = np.asarray(shap_values, dtype=float).reshape(-1)
     X = np.asarray(X, dtype=float).reshape(-1)
@@ -731,6 +742,20 @@ def plot_group_mean_abs_shap(
     dpi: int,
     output_path: Union[str, Path],
 ) -> Path:
+    """Plot mean |SHAP| aggregated by a provided feature->group mapping.
+
+    Aggregation is performed by summing SHAP values within each group for each sample,
+    taking the absolute value, then averaging across samples.
+
+    Parameters
+    ----------
+    normalize:
+        Optional normalization for group magnitudes:
+        - "none": plot mean(|sum_group_shap|) (default)
+        - "per_feature": divide by number of features in the group
+        - "fraction": for each sample, divide |sum_group_shap| by total
+          |sum_group_shap| across groups; then average across samples
+    """
     plt.rcParams.update(STYLE)
     shap_values = np.asarray(shap_values, dtype=float)
     feat_names = [str(f) for f in feature_names]
@@ -762,6 +787,7 @@ def plot_group_mean_abs_shap(
         grouped_abs[:, group_idx] = np.abs(group_sum)
 
     totals = np.nansum(grouped_abs, axis=1)
+    # Compute per-sample contribution share to model output shift.
     shares = np.divide(
         grouped_abs,
         totals[:, None],
@@ -1144,6 +1170,7 @@ def plot_tertile_stratified_survival_and_km(
     cohort_label: str = "population",
     show_table: bool = True,
 ) -> tuple[Path, pd.DataFrame, Dict[str, Any]]:
+    """Plot stratified survival curves with population KM/mean prediction and summary tables."""
     plt.rcParams.update(STYLE)
     if subset_indices is not None:
         subset_labels = list(dict.fromkeys(subset_indices))
@@ -1545,6 +1572,7 @@ def plot_population_km_vs_mean(
     figsize: tuple[float, float] = (8.0, 5.0),
     dpi: int = 400,
 ) -> tuple[Path, Dict[str, float]]:
+    """Plot the population KM curve alongside the mean predicted survival and return MAE."""
     plt.rcParams.update(STYLE)
     time_grid = np.asarray(time_grid, dtype=float)
     surv_np = np.asarray(surv_np, dtype=float)

@@ -8,5 +8,4 @@ TITLE = "Most common mLoT2+ treatment-category combinations at mLoT initiation, 
 
 def build(ctx):
     dm = ctx.manuscript.dm
-    return [Panel("", combinations(dm[dm.LINE != 1], "TREATMENT"),
-                  "Percentages reflect the share within each HR/HER2 subtype among mLoT2+ lines.")]
+    return [Panel("", combinations(dm[dm.LINE != 1], "TREATMENT"))]

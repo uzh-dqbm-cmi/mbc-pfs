@@ -24,6 +24,8 @@ def aggregate_tumor_site_features(
     value_cols: Iterable[str],
     window_days: int,
 ) -> pd.DataFrame:
+    """Summarize tumor-site indicators with 90d window + ever-positive flags."""
+
     rows: List[Dict[str, float]] = []
 
     for pid, line_id, line_start, history in iter_measurements_before_line(
@@ -77,6 +79,7 @@ def build_tumor_site_features(ctx) -> ModalityFrame:
 
     subsites = sorted(sites["TUMOR_SITE"].dropna().astype(str).unique().tolist())
     for sub in subsites:
+        # Rows only exist when a site is present; leave others missing.
         sites[sub] = np.where(sites["TUMOR_SITE"] == sub, 1, np.nan)
     measurements = sites[["PATIENT_ID", "START_DATE"] + subsites].copy()
 

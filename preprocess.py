@@ -13,6 +13,8 @@ from config import ADMIN_CENSOR_DAYS, EVENT_COL, IGNORE_COLS, IGNORE_PREFIXES, T
 
 
 class NanRobustScaler(BaseEstimator, TransformerMixin):
+    """Robustly scale features while leaving NaNs in place."""
+
     def __init__(self, with_centering: bool = True, with_scaling: bool = True) -> None:
         self.with_centering = with_centering
         self.with_scaling = with_scaling
@@ -54,6 +56,8 @@ def preprocess_df(
     design_matrix: pd.DataFrame,
     ignore_prefix: str | None = None,
 ) -> dict:
+    """Basic preprocessing steps on raw design matrix DataFrame."""
+
     train_df = design_matrix.iloc[train_idx]
     val_df = design_matrix.iloc[val_idx]
     test_df = design_matrix.iloc[test_idx]
@@ -67,6 +71,7 @@ def preprocess_df(
         test_df, ignore_prefix=ignore_prefix
     )
 
+    # Standardize numeric features for consistency across model families.
     num_pipe = Pipeline(
         [("scale", NanRobustScaler(with_centering=True, with_scaling=True))]
     )
@@ -126,6 +131,8 @@ def preprocess_df(
 
 
 def _binary_label(series: pd.Series, name: str) -> str:
+    """Ensure a binary column is consistent within a group and return its label."""
+
     values = pd.to_numeric(series, errors="raise").astype(int)
     uniques = values.unique()
     if len(uniques) != 1:
@@ -137,6 +144,8 @@ def _binary_label(series: pd.Series, name: str) -> str:
 
 
 def _admin_censor_flag(grp: pd.DataFrame, event_col: str, time_col: str) -> str:
+    """Flag if any line for the patient is administratively censored at the configured horizon."""
+
     events = pd.to_numeric(grp[event_col], errors="raise").astype(int)
     times = pd.to_numeric(grp[time_col], errors="raise").astype(float)
     admin_censored = bool(((events == 0) & (times >= ADMIN_CENSOR_DAYS)).any())
@@ -151,6 +160,11 @@ def _hr_her2_admin_strata(
     hr_col: str = "HR",
     her2_col: str = "HER2",
 ) -> np.ndarray:
+    """
+    Derive a single stratification label per patient combining HR, HER2, and whether any LoT was administratively censored.
+    Raises if any group has mixed values for HR/HER2.
+    """
+
     missing = [
         col
         for col in (time_col, event_col, hr_col, her2_col, group_col)
@@ -167,6 +181,9 @@ def _hr_her2_admin_strata(
         group_labels[str(pid)] = f"{admin_flag}_HR{hr_label}_HER2{her2_label}"
 
     return df[group_col].astype(str).map(group_labels).to_numpy()
+
+
+# ----------------- 2) Typecasting -----------------
 
 
 def typecast(

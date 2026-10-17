@@ -9,12 +9,14 @@ import pandas as pd
 
 @dataclass(frozen=True)
 class FeatureMapping:
-    feature: str
-    group: str
-    genie_source: str
-    genie_columns: str
-    transform: str
-    status: str
+    """One row of the feature-mapping audit."""
+
+    feature: str  # MSK design-matrix column name
+    group: str  # MSK modality (features_dict key)
+    genie_source: str  # GENIE file(s) the value comes from
+    genie_columns: str  # GENIE column(s) used
+    transform: str  # short human description of the derivation
+    status: str  # "mapped" | "empty" | "constant"
 
 
 MSK_BODY_PARTS = ["CHEST", "ABDOMEN", "PELVIS", "HEAD", "OTHER"]
@@ -62,6 +64,7 @@ DIST_METS_TO_TUMOR_SITE: Dict[str, List[str]] = {
 }
 
 GENIE_DRUG_TO_AGENT: Dict[str, str] = {
+    # --- Hormone therapy ---
     "ANASTROZOLE": "HORMONE_ANASTROZOLE",
     "EXEMESTANE": "HORMONE_EXEMESTANE",
     "FULVESTRANT": "HORMONE_FULVESTRANT",
@@ -72,6 +75,7 @@ GENIE_DRUG_TO_AGENT: Dict[str, str] = {
     "MEGESTROL ACETATE": "HORMONE_OTHER",
     "TOREMIFENE": "HORMONE_OTHER",
     "BICALUTAMIDE": "HORMONE_OTHER",
+    # --- Cytotoxic chemotherapy ---
     "CAPECITABINE": "CHEMO_CAPECITABINE",
     "PACLITAXEL": "CHEMO_PACLITAXEL",
     "GEMCITABINE HCL": "CHEMO_GEMCITABINE",
@@ -101,6 +105,7 @@ GENIE_DRUG_TO_AGENT: Dict[str, str] = {
     "IFOSFAMIDE": "CHEMO_OTHER",
     "LEUCOVORIN": "CHEMO_OTHER",
     "LURBINECTEDIN": "CHEMO_OTHER",
+    # --- Biologics / antibodies / ADCs ---
     "PERTUZUMAB": "BIOLOGIC_PERTUZUMAB",
     "TRASTUZUMAB": "BIOLOGIC_TRASTUZUMAB",
     "TRASTUZUMAB EMTANSINE": "BIOLOGIC_ADO-TRASTUZUMAB EMTANSINE",
@@ -110,6 +115,7 @@ GENIE_DRUG_TO_AGENT: Dict[str, str] = {
     "CETUXIMAB": "BIOLOGIC_OTHER",
     "RITUXIMAB": "BIOLOGIC_OTHER",
     "SACITUZUMAB GOVITECAN": "BIOLOGIC_OTHER",
+    # --- Targeted small molecules ---
     "ABEMACICLIB": "TARGETED_ABEMACICLIB",
     "PALBOCICLIB": "TARGETED_PALBOCICLIB",
     "EVEROLIMUS": "TARGETED_EVEROLIMUS",
@@ -128,10 +134,12 @@ GENIE_DRUG_TO_AGENT: Dict[str, str] = {
     "LAROTRECTINIB": "TARGETED_OTHER",
     "OLAPARIB": "TARGETED_OTHER",
     "TALAZOPARIB": "TARGETED_OTHER",
+    # --- Immunotherapy ---
     "PEMBROLIZUMAB": "IMMUNO_PEMBROLIZUMAB",
     "ATEZOLIZUMAB": "IMMUNO_ATEZOLIZUMAB",
     "IPILIMUMAB": "IMMUNO_IPILIMUMAB",
     "NIVOLUMAB": "IMMUNO_NIVOLUMAB",
+    # --- Investigational (MSK records these as the OTHER_INVESTIGATIVE agent) ---
     "INVESTIGATIONAL DRUG": "OTHER_INVESTIGATIVE",
 }
 
@@ -170,6 +178,7 @@ AGENT_COMBO_SPLITS: Dict[str, List[str]] = {
 
 
 def canonical_agent(name: object) -> str:
+    """Normalise an MSK ``AGENT`` or GENIE drug name to one shared token."""
     s = re.sub(r"\s+", " ", str(name).strip().upper())
     if s in AGENT_SYNONYMS:
         return AGENT_SYNONYMS[s]
@@ -181,6 +190,7 @@ def canonical_agent(name: object) -> str:
 
 
 def canonical_regimen(tokens: Iterable[object]) -> FrozenSet[str]:
+    """Canonical frozenset of agents for a regimen, expanding combo products."""
     agents: Set[str] = set()
     for tok in tokens:
         a = canonical_agent(tok)
@@ -194,12 +204,14 @@ def canonical_regimen(tokens: Iterable[object]) -> FrozenSet[str]:
 
 
 def is_positive(value: object) -> bool:
+    """True for GENIE biomarker results that indicate positivity/elevation."""
     if pd.isna(value):
         return False
     return "POSITIVE" in str(value).strip().upper()
 
 
 def cancer_status_bucket(value: object) -> str:
+    """Map a GENIE imaging CANCER_STATUS string to Y / N / INDET."""
     text = "" if pd.isna(value) else str(value).strip().upper()
     if text.startswith("YES"):
         return "Y"
@@ -209,6 +221,7 @@ def cancer_status_bucket(value: object) -> str:
 
 
 def scan_sites_to_parts(value: object) -> Set[str]:
+    """Translate a comma-joined SCAN_SITES string to MSK body parts."""
     parts: Set[str] = set()
     if pd.isna(value):
         return parts
@@ -220,6 +233,7 @@ def scan_sites_to_parts(value: object) -> Set[str]:
 
 
 def collapse_stage_digit(code: object) -> Optional[str]:
+    """First numeric digit of a NAACCR group-stage code (e.g. '2A' -> '2')."""
     if pd.isna(code):
         return None
     for ch in str(code).strip().upper():

@@ -1,3 +1,18 @@
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#       jupytext_version: 1.17.2
+#   kernelspec:
+#     display_name: .venv
+#     language: python
+#     name: python3
+# ---
+
+# %%
 import json
 import warnings
 from pathlib import Path
@@ -16,6 +31,7 @@ from utils import (
     save_full_survival_curves,
 )
 
+# Silence SurvivalEVAL padding warnings about non-zero starting time grids.
 warnings.filterwarnings(
     "ignore",
     message="The first time coordinate is not 0.*",

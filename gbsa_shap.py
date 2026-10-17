@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 
+# Determinism: set env vars *before* importing numpy / sklearn to reduce BLAS/OpenMP
+# nondeterminism across runs.
 os.environ.setdefault("PYTHONHASHSEED", "0")
 os.environ.setdefault("OMP_NUM_THREADS", "1")
 os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
@@ -53,11 +55,21 @@ def shap_gbsa(
     outdir: Path,
     target_time: float,
 ) -> None:
+    """Compute and save SHAP values for a trained GBSA model.
+
+    Args:
+        splits: Dictionary containing training and test splits.
+        outdir: Directory to save SHAP values.
+        target_time: If provided, explain predicted survival probability at this time;
+            otherwise explain the raw GBSA risk score.
+    """
+
     X_train_np = splits["X_train_np"]
     X_test_np = splits["X_test_np"]
     feature_names = splits["numeric_cols"] + splits["binary_cols"]
     model = joblib.load(outdir / "model.joblib")
 
+    # Ensure any residual randomness inside SHAP stays stable.
     random.seed(int(RANDOM_STATE))
     np.random.seed(int(RANDOM_STATE))
 
@@ -109,6 +121,7 @@ def _run_outer_fold(
     design_matrix_path: Path,
     gbsa_configs: list[dict],
 ) -> tuple[int, bool, str]:
+    """Train (if needed) and compute SHAP for a single outer fold."""
     try:
         random.seed(int(RANDOM_STATE) + int(outer_idx))
         np.random.seed(int(RANDOM_STATE) + int(outer_idx))
@@ -127,6 +140,7 @@ def _run_outer_fold(
             cfg for cfg in gbsa_configs if cfg.get("name") == best_config_name
         )
 
+        # Train only if model artifact missing (avoid redundant work).
         model_path = outdir / "model.joblib"
         if not model_path.exists():
             print(

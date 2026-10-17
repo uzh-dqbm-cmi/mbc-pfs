@@ -15,6 +15,7 @@ from tabulate import tabulate
 from config import (ADMIN_CENSOR_DAYS, AUC, C_INDEX, DESIGN_MATRIX_PATH, FEATURES_DICT_PATH, IGNORE_COLS,
                     IGNORE_PREFIXES, MODALITY_GROUPS, RESULTS_PATH)
 
+# %%
 MODEL = "gbsa"
 BASE_MODELS: Sequence[str] = sorted(("coxph", "deephit", "deepsurv", "gbsa", "rsf"))
 DEEPHIT_BOOTSTRAP_INTERP_GRID = np.arange(0.0, float(ADMIN_CENSOR_DAYS), 1.0)
@@ -34,6 +35,7 @@ RULE_CLAUSES = [("include_exact", "exact feature", "exact features"), ("include_
 
 
 def assign_tertiles(values: pd.Series) -> pd.Series:
+    """Assign `low`/`mid`/`high` by equal-frequency thirds of the valid scores."""
     values = pd.to_numeric(values, errors="coerce")
     valid = values.dropna()
     strata = pd.Series(index=values.index, dtype=object)
@@ -84,6 +86,7 @@ def median_pfs(pfs: pd.Series, events: pd.Series) -> float:
 
 
 def median_pfs_ci(pfs: pd.Series, events: pd.Series, alpha: float = 0.05) -> tuple[float, float, float]:
+    # Kaplan–Meier median PFS (accounts for censoring).
     from survival_stats import km_median_ci
 
     return km_median_ci(pfs, events, alpha=alpha)
@@ -312,6 +315,7 @@ def build_model_perf(results_root: Path, base_models: Sequence[str]) -> tuple[Di
 
 
 def load_oof_surv_only(dm, surv_paths, target_time_grid: np.ndarray | None = None):
+    # --- build common time grid ---
     if target_time_grid is None:
         time_list = []
         for p in surv_paths:
@@ -329,15 +333,18 @@ def load_oof_surv_only(dm, surv_paths, target_time_grid: np.ndarray | None = Non
             raise ValueError("target_time_grid must be non-empty.")
         common_time = np.unique(common_time)
 
+    # --- initialize arrays ---
     n = len(dm)
     surv_oof = np.full((n, common_time.size), np.nan, dtype=float)
 
+    # --- fill OOF arrays ---
     for surv_path in surv_paths:
         with np.load(surv_path) as sf:
             idx_test = np.asarray(sf["idx_test"], dtype=int)
             time_grid = np.asarray(sf["time"], dtype=float)
             surv_vals = np.asarray(sf["surv"], dtype=float)
             if target_time_grid is None:
+                # align columns to the common grid
                 col_idx = np.searchsorted(time_grid, common_time)
                 if not np.allclose(time_grid[col_idx], common_time):
                     raise ValueError(f"Time grid mismatch in {surv_path}")
@@ -349,6 +356,7 @@ def load_oof_surv_only(dm, surv_paths, target_time_grid: np.ndarray | None = Non
                     target_time_grid=common_time,
                 )
 
+    # --- wrap as DataFrame for downstream use ---
     surv_df = pd.DataFrame(surv_oof, index=dm.index, columns=common_time)
     return surv_df, common_time
 
@@ -356,11 +364,13 @@ def load_oof_surv_only(dm, surv_paths, target_time_grid: np.ndarray | None = Non
 def load_oof_surv_and_shap(dm, surv_paths, shap_paths):
     surv_df, common_time = load_oof_surv_only(dm, surv_paths)
     n = len(dm)
+    # load feature names from any shap file
     with np.load(shap_paths[0], allow_pickle=True) as f:
         feature_names = np.asarray(f["feature_names"]).astype(str)
     shap_oof = np.full((n, feature_names.size), np.nan, dtype=float)
     shap_X = np.full((n, feature_names.size), np.nan, dtype=float)
     shap_expected = np.full(n, np.nan, dtype=float)
+    # --- fill OOF arrays ---
     for surv_path, shap_path in zip(surv_paths, shap_paths):
         with np.load(surv_path) as sf:
             idx_test = np.asarray(sf["idx_test"], dtype=int)
@@ -371,6 +381,7 @@ def load_oof_surv_and_shap(dm, surv_paths, shap_paths):
             shap_oof[sample_idx] = np.asarray(hf["shap_values"], dtype=float)
             shap_X[sample_idx] = np.asarray(hf["X"], dtype=float)
             shap_expected[sample_idx] = np.asarray(hf["expected_value"]).reshape(-1)
+    # --- wrap as DataFrames/Series for downstream use ---
     shap_df = pd.DataFrame(shap_oof, index=dm.index, columns=feature_names)
     shap_X_df = pd.DataFrame(shap_X, index=dm.index, columns=feature_names)
     shap_expected_s = pd.Series(shap_expected, index=dm.index, name="expected_value")
@@ -378,6 +389,7 @@ def load_oof_surv_and_shap(dm, surv_paths, shap_paths):
 
 
 def paired_signflip_test(x: Sequence[float], y: Sequence[float], *, alternative: str = "two-sided") -> Dict[str, float]:
+    """Exact paired sign-flip test on outer-fold differences (good for n=5)."""
     x_arr = np.asarray(x, dtype=float)
     y_arr = np.asarray(y, dtype=float)
     if x_arr.shape != y_arr.shape:
@@ -388,6 +400,7 @@ def paired_signflip_test(x: Sequence[float], y: Sequence[float], *, alternative:
     if n == 0:
         return {"n": 0.0, "mean_diff": float("nan"), "p_value": float("nan")}
     obs = float(np.mean(d))
+    # enumerate all 2^n sign flips (n is tiny for nested-CV outer folds)
     flips = np.asarray([((mask >> np.arange(n)) & 1) * 2 - 1 for mask in range(1 << n)], dtype=float)
     means = flips.dot(d) / float(n)
     if alternative == "greater":
@@ -421,7 +434,14 @@ def cohen_d_smd(high_df: pd.DataFrame, low_df: pd.DataFrame) -> pd.Series:
 
 
 def _to_index(df: pd.DataFrame, sel) -> pd.Index:
+    """
+    Accepts either:
+      - boolean mask aligned to df.index (len == n_rows), or
+      - explicit index labels / positions.
+    Returns pd.Index of selected rows (labels).
+    """
     if isinstance(sel, (np.ndarray, list, pd.Series)) and len(sel) == len(df.index):
+        # treat as boolean mask if dtype is bool-ish
         s = np.asarray(sel)
         if s.dtype == bool:
             return df.index[s]
@@ -429,6 +449,9 @@ def _to_index(df: pd.DataFrame, sel) -> pd.Index:
 
 
 def _resolve_contrast_indices(df: pd.DataFrame, high_sel, low_sel, cohort_sel=None) -> tuple[pd.Index, pd.Index, pd.Index]:
+    """
+    Resolve cohort/high/low selections to index labels and intersect high/low with cohort.
+    """
     cohort_idx = df.index if cohort_sel is None else _to_index(df, cohort_sel)
     if len(cohort_idx) < 1:
         raise ValueError("Cohort selection is empty.")
@@ -440,12 +463,19 @@ def _resolve_contrast_indices(df: pd.DataFrame, high_sel, low_sel, cohort_sel=No
 
 
 def baseline_feature_value_contrast(feature_df: pd.DataFrame, high_sel, low_sel, cohort_sel=None) -> pd.Series:
+    """
+    Cohen's d on mean-centered baseline feature values within cohort G.
+    """
     cohort_idx, high_idx, low_idx = _resolve_contrast_indices(feature_df, high_sel, low_sel, cohort_sel)
     centered = feature_df.sub(feature_df.loc[cohort_idx].mean(axis=0), axis=1)
     return cohen_d_smd(centered.loc[high_idx], centered.loc[low_idx])
 
 
 def build_group_shap_share_df(shap_df: pd.DataFrame, group_map: Dict[str, str]) -> pd.DataFrame:
+    """
+    Compute per-line group share scores s_g(i) from SHAP values:
+      s_g(i) = |sum_{j in g} phi_ij| / sum_{g'} |sum_{j in g'} phi_ij|
+    """
     cols = [c for c in shap_df.columns if c in group_map]
     if not cols:
         return pd.DataFrame(index=shap_df.index)
@@ -460,6 +490,9 @@ def build_group_shap_share_df(shap_df: pd.DataFrame, group_map: Dict[str, str]) 
 
 def group_feature_contrast(shap_df: pd.DataFrame, group_map: Dict[str, str], high_sel, low_sel,
                            cohort_sel=None) -> pd.Series:
+    """
+    Cohen's d on group share scores s_g(i) between high and low risk within cohort G.
+    """
     share_df = build_group_shap_share_df(shap_df, group_map)
     if share_df.empty:
         return pd.Series(dtype=float)
@@ -566,6 +599,7 @@ def baseline_characteristics(dm: pd.DataFrame) -> dict[str, float]:
 
 
 def age_table(dm: pd.DataFrame, patients: bool) -> pd.DataFrame:
+    # Build patient-level table by dropping duplicates on patient_id (keeps first row per patient).
     d = dm.sort_values(["PATIENT_ID", "LINE"]).drop_duplicates("PATIENT_ID") if patients else dm.copy()
     d = d.copy()
     d["age_group"] = pd.cut(d.AGE, [-float("inf"), 40, 50, 65, 75, float("inf")],

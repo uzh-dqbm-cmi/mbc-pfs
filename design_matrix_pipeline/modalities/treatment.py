@@ -78,6 +78,7 @@ def build_treatment_features(ctx) -> ModalityFrame:
             line_start = int(line_row["LINE_START"])
             event_day_int = int(line_row.get("EVENT_DAY"))
             planned_end = line_start + ctx.window_days
+            # if it's received shortly before line ends, does not count it
             received_end = event_day_int - ctx.window_days
 
             features: dict[str, int | str] = {

@@ -41,5 +41,5 @@ The licenses of those two packages are included in their respective directory un
    - `extended_data.txt`: Extended Data Tables 1-28 and the numbers behind Extended Data Figures 1-6, in Extended Data order
    - the figures, in `manuscript/figures/`
 
-`python analysis_reports.py` writes additional analysis summaries to `results/analysis_reports/` and `analysis_data.txt`. `python print_tables.py t2 ed15` prints single tables (`--list` lists the keys).
+`python print_tables.py t2 ed15` prints single tables (`--list` lists the keys).
 

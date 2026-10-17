@@ -8,8 +8,11 @@ K_OUTER = 5
 K_INNER = 3
 SPLITS_OUTPUT_DIR = "cv_splits"
 ABLATION_CONFIGS_PATH = Path("data") / "ablation_configs.json"
+# Treat configs within this C-index margin of the best score as ties.
 C_SELECTION_EPS = 0.003
 
+# CoxPHSurvivalAnalysis `alpha` is an L2-regularization strength; it is not
+# constrained to [0, 1]. We search a log-scale grid.
 _COXPH_ALPHA_GRID = list(10.0 ** np.linspace(-1, 3, 30))
 _COXPH_UNIQUE_ALPHAS = sorted(
     {float(np.round(alpha, 3)) for alpha in _COXPH_ALPHA_GRID}, reverse=True
@@ -161,6 +164,7 @@ MODEL_CONFIGS = {
         },
     ],
     "gbsa": [
+        # 3x (400): simple, mid, large
         {
             "name": "gbsa-simple-400",
             "n_estimators": 400,

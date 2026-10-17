@@ -1,3 +1,6 @@
+"""Build the master design matrix by stitching modality-specific feature tables."""
+
+# %%
 from __future__ import annotations
 
 import argparse
@@ -42,6 +45,8 @@ def order_columns(design_matrix: pd.DataFrame, features_dict: dict) -> pd.DataFr
 
 
 def build_design_matrix_pipeline(window_days: int = LINE_START_WINDOW_DAYS) -> pd.DataFrame:
+    """Construct and persist the design matrix, returning the in-memory frame."""
+
     out_dir = data_dir(window_days)
     ctx = create_context(window_days)
     modality_frames = build_all_modalities(ctx)
@@ -97,6 +102,7 @@ def build_design_matrix_pipeline(window_days: int = LINE_START_WINDOW_DAYS) -> p
             f"  Other ineligible LoTs: {other_lines:,} across {other_patients:,} patients"
         )
 
+    # DROP BEFORE DOWNSTREAM: LINES with PFS_EVENT = -1 and TREATMENT COLS
     design_matrix = (
         design_matrix[design_matrix["PFS_EVENT"] != -1].copy().reset_index(drop=True)
     )
@@ -104,17 +110,20 @@ def build_design_matrix_pipeline(window_days: int = LINE_START_WINDOW_DAYS) -> p
         "Remaining after dropping PFS_EVENT=-1:"
         f" {design_matrix.shape} across {design_matrix['PATIENT_ID'].nunique():,} patients"
     )
+    # Retain only agent-level features
     treatment_cols = [
         c
         for c in design_matrix.columns
         if c.startswith("PLANNED_TREATMENT_") or c.startswith("RECEIVED_TREATMENT_")
     ]
     design_matrix = design_matrix.drop(columns=treatment_cols)
+    # also delete treatment_cols from features_dict
     if "TREATMENT" in features_dict:
         features_dict["TREATMENT"] = [
             c for c in features_dict["TREATMENT"] if c not in treatment_cols
         ]
     bool_cols = [c for c in design_matrix.columns if design_matrix[c].dtype == "bool"]
+    # typecast all boolean columns to Int8
     print(f"Converting {len(bool_cols)} boolean columns to Int8")
     for col in bool_cols:
         design_matrix[col] = design_matrix[col].astype("Int8")

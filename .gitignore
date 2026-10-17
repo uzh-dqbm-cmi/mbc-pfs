@@ -11,11 +11,12 @@ __pycache__/
 .mplconfig/
 logs/
 
-# Data and every file the pipeline writes under data/ (patient-level; never commit)
+# Local data and generated files; the listed MSK reference file and configuration are tracked
 data/msk_chord_2024/
 data/genie/
 data/genie_design_matrix.csv
 data/*
+!data/brca_dx_1st_seq_OS.csv
 !data/features_dict.json
 !data/feature_groups.json
 !data/feature_display_names.json
