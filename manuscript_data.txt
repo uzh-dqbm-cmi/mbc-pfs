@@ -1,0 +1,336 @@
+====================================================================================================
+Figure 1. Workflow overview
+[fig:workflow, fig:cohort-construction]
+====================================================================================================
+
+Static BioRender figure; no data output.
+
+====================================================================================================
+Table 1. Cohort size, PFS summary, and first-line (mLoT1) treatment-category combinations overall and by disease subtype
+====================================================================================================
+
+a. Cohort characteristics
++---------------------------+-----------+---------------+-----------------+-------------------+-------------------+
+|                           | Overall   | TNBC          | HR-/HER2+       | HR+/HER2-         | HR+/HER2+         |
+|---------------------------+-----------+---------------+-----------------+-------------------+-------------------|
+| Patients                  | 2,881     | 440           | 147             | 1,948             | 346               |
+| Total mLoTs               | 8,791     | 1,032         | 437             | 6,130             | 1,192             |
+| Mean mLoTs/patient        | 3.05      | 2.35          | 2.97            | 3.15              | 3.45              |
+| Event rate (%)            | 86.1      | 91.1          | 76.0            | 86.5              | 83.3              |
+| Median PFS (days)         | 115       | 85            | 155             | 116               | 145               |
+| First lines               | 2,342     | 389           | 141             | 1,565             | 247               |
+| First-line event rate (%) | 71.1      | 83.3          | 63.1            | 69.3              | 67.6              |
+| Top 1 mLoT1               |           | Chemo         | Chemo, Biologic | Hormone, Targeted | Chemo, Biologic   |
+| – # (%)                   |           | 289 (74.3%)   | 81 (57.4%)      | 703 (44.9%)       | 82 (33.2%)        |
+| Top 2 mLoT1               |           | Chemo, Immuno | Biologic        | Hormone           | Hormone, Biologic |
+| – # (%)                   |           | 39 (10.0%)    | 25 (17.7%)      | 528 (33.7%)       | 55 (22.3%)        |
++---------------------------+-----------+---------------+-----------------+-------------------+-------------------+
+
+====================================================================================================
+Figure 2. Time-dependent model performance and population risk stratification
+[fig:perf-and-risk]
+====================================================================================================
+
+subfigure: fig:time-dependent-perf
+Nearest-grid evaluation note: requested horizons [90, 180, 365, 730] resolve to [90, 180, 365, 723].
+Time-dependent IPCW C-index (mean ± SD):
++----------+---------------+---------------+---------------+---------------+
+| Model    | 90d           | 180d          | 365d          | 730d          |
+|----------+---------------+---------------+---------------+---------------|
+| CoxPH    | 0.691 ± 0.008 | 0.682 ± 0.007 | 0.681 ± 0.007 | 0.679 ± 0.007 |
+| DeepHit  | 0.696 ± 0.008 | 0.683 ± 0.007 | 0.675 ± 0.009 | 0.651 ± 0.011 |
+| DeepSurv | 0.694 ± 0.010 | 0.683 ± 0.009 | 0.682 ± 0.010 | 0.680 ± 0.009 |
+| GBSA     | 0.693 ± 0.006 | 0.684 ± 0.006 | 0.683 ± 0.006 | 0.681 ± 0.006 |
+| RSF      | 0.684 ± 0.006 | 0.674 ± 0.006 | 0.671 ± 0.007 | 0.666 ± 0.007 |
++----------+---------------+---------------+---------------+---------------+
+
+Time-dependent AUC (mean ± SD):
++----------+---------------+---------------+---------------+---------------+
+| Model    | 90d           | 180d          | 365d          | 730d          |
+|----------+---------------+---------------+---------------+---------------|
+| CoxPH    | 0.730 ± 0.008 | 0.759 ± 0.011 | 0.818 ± 0.008 | 0.842 ± 0.013 |
+| DeepHit  | 0.736 ± 0.010 | 0.759 ± 0.012 | 0.811 ± 0.008 | 0.806 ± 0.026 |
+| DeepSurv | 0.732 ± 0.012 | 0.760 ± 0.011 | 0.816 ± 0.012 | 0.841 ± 0.015 |
+| GBSA     | 0.733 ± 0.007 | 0.763 ± 0.011 | 0.824 ± 0.008 | 0.847 ± 0.012 |
+| RSF      | 0.724 ± 0.008 | 0.753 ± 0.012 | 0.814 ± 0.009 | 0.845 ± 0.012 |
++----------+---------------+---------------+---------------+---------------+
+
+subfigure: fig:risk-strat
+Log-rank p-value (population): 0
+
+Risk-set counts (at risk) and RMST:
+   stratum  count  180d_at_risk  365d_at_risk  730d_at_risk  RMST_KM  RMST delta
+Population   8791          3025          1412           552      167          -3
+  Low-risk   2931          1723          1038           461      244         -10
+  Mid-risk   2930           905           310            79      156           4
+ High-risk   2930           397            64            12      102          -2
+
+Population tertile summary:
+stratum    n  risk_mean  risk_median  pred_surv_at_horizon       rmst  rmst_ci_low  rmst_ci_high  rmst_pred_mean  mae_pred_vs_km
+    low 2931   0.623684     0.640515              0.376316 243.578774   238.960554    249.193970      233.152477        0.029713
+    mid 2930   0.868244     0.873220              0.131756 156.277230   152.082674    160.128167      160.013167        0.010692
+   high 2930   0.978297     0.981781              0.021703 102.316979    99.090318    105.072765       99.845287        0.008837
+Stratum MAE:
++-----------+-------------------------------+
+| Stratum   |   MAE (mean prediction vs KM) |
+|-----------+-------------------------------|
+| low       |                         0.03  |
+| mid       |                         0.011 |
+| high      |                         0.009 |
++-----------+-------------------------------+
+[Population Kaplan-Meier vs mean prediction] N=8791 | At risk @180: 3025 (34.4%) | @365: 1412 (16.1%) | @730: 552 (6.3%)
+Population MAE (mean prediction vs KM): 0.008
+
+====================================================================================================
+Table 2. Global performance across survival models for PFS prediction
+====================================================================================================
+
++----------+---------------+---------------+---------------+---------------+---------------+
+| Metric   | CoxPH         | DeepHit       | DeepSurv      | GBSA          | RSF           |
+|----------+---------------+---------------+---------------+---------------+---------------|
+| C-index  | 0.679 ± 0.007 | 0.685 ± 0.008 | 0.680 ± 0.009 | 0.681 ± 0.006 | 0.674 ± 0.006 |
+| mean AUC | 0.754 ± 0.008 | 0.759 ± 0.007 | 0.755 ± 0.011 | 0.757 ± 0.006 | 0.747 ± 0.005 |
+| AUC @ 1y | 0.818 ± 0.008 | 0.811 ± 0.008 | 0.816 ± 0.012 | 0.824 ± 0.008 | 0.814 ± 0.009 |
+| AUC @ 2y | 0.842 ± 0.013 | 0.806 ± 0.026 | 0.841 ± 0.015 | 0.847 ± 0.012 | 0.845 ± 0.012 |
+| IBS      | 0.126 ± 0.004 | 0.140 ± 0.007 | 0.125 ± 0.005 | 0.124 ± 0.004 | 0.125 ± 0.004 |
++----------+---------------+---------------+---------------+---------------+---------------+
+
+====================================================================================================
+Figure 3. Tertile-stratified Kaplan-Meier and mean predicted survival by subtype and line group
+[fig:stratify-by-subtype]
+====================================================================================================
+
+HR-/HER2-
+Log-rank p-value (HR-/HER2- (local tertiles)): 9.89e-39
+
+Risk-set counts (at risk) and RMST:
+   stratum  count  180d_at_risk  365d_at_risk  730d_at_risk  RMST_KM  RMST delta
+Population   1032           231            90            31      131           9
+  Low-risk    344           129            65            27      185          19
+  Mid-risk    344            73            19             4      125           7
+ High-risk    344            29             6             0       85           1
+stratum   n  risk_mean  risk_median  pred_surv_at_horizon       rmst  rmst_ci_low  rmst_ci_high  rmst_pred_mean  mae_pred_vs_km
+    low 344   0.727991     0.754399              0.272009 185.102470   171.251773    199.919599       204.40069        0.050423
+    mid 344   0.933086     0.939931              0.066914 125.138723   114.576688    135.535836       131.92787        0.017493
+   high 344   0.991496     0.993287              0.008504  84.942283    78.215878     93.087298        85.67527        0.015018
+Stratum MAE:
++-----------+-------------------------------+
+| Stratum   |   MAE (mean prediction vs KM) |
+|-----------+-------------------------------|
+| low       |                         0.05  |
+| mid       |                         0.017 |
+| high      |                         0.015 |
++-----------+-------------------------------+
+
+HR-/HER2+
+Log-rank p-value (HR-/HER2+ (local tertiles)): 5.44e-23
+
+Risk-set counts (at risk) and RMST:
+   stratum  count  180d_at_risk  365d_at_risk  730d_at_risk  RMST_KM  RMST delta
+Population    437           180           105            52      194          -9
+  Low-risk    146            92            61            30      266         -19
+  Mid-risk    146            65            35            19      193          -7
+ High-risk    145            23             9             3      124          -2
+stratum   n  risk_mean  risk_median  pred_surv_at_horizon       rmst  rmst_ci_low  rmst_ci_high  rmst_pred_mean  mae_pred_vs_km
+    low 146   0.571675     0.571127              0.428325 265.582489   246.699688    284.904379      246.365744        0.069442
+    mid 146   0.794068     0.796301              0.205932 192.896929   170.297673    219.226891      186.031661        0.045718
+   high 145   0.947714     0.951751              0.052286 123.790218   107.124449    144.078076      121.578966        0.017774
+Stratum MAE:
++-----------+-------------------------------+
+| Stratum   |   MAE (mean prediction vs KM) |
+|-----------+-------------------------------|
+| low       |                         0.069 |
+| mid       |                         0.046 |
+| high      |                         0.018 |
++-----------+-------------------------------+
+
+HR+/HER2-
+Log-rank p-value (HR+/HER2- (local tertiles)): 0
+
+Risk-set counts (at risk) and RMST:
+   stratum  count  180d_at_risk  365d_at_risk  730d_at_risk  RMST_KM  RMST delta
+Population   6130          2143          1014           387      168          -4
+  Low-risk   2044          1247           769           331      247         -13
+  Mid-risk   2043           626           202            48      156           3
+ High-risk   2043           270            43             8      102          -3
+stratum    n  risk_mean  risk_median  pred_surv_at_horizon       rmst  rmst_ci_low  rmst_ci_high  rmst_pred_mean  mae_pred_vs_km
+    low 2044   0.619130     0.631289              0.380870 247.473102   241.272814    252.641895      234.258489        0.036259
+    mid 2043   0.872506     0.878221              0.127494 155.625577   150.592369    160.232505      158.349345        0.011809
+   high 2043   0.979263     0.982868              0.020737 101.779961    98.393162    105.380431       99.083793        0.007472
+Stratum MAE:
++-----------+-------------------------------+
+| Stratum   |   MAE (mean prediction vs KM) |
+|-----------+-------------------------------|
+| low       |                         0.036 |
+| mid       |                         0.012 |
+| high      |                         0.007 |
++-----------+-------------------------------+
+
+HR+/HER2+
+Log-rank p-value (HR+/HER2+ (local tertiles)): 5.49e-46
+
+Risk-set counts (at risk) and RMST:
+   stratum  count  180d_at_risk  365d_at_risk  730d_at_risk  RMST_KM  RMST delta
+Population   1192           471           203            82      183          -3
+  Low-risk    398           213           112            54      236           2
+  Mid-risk    397           173            74            26      187          -5
+ High-risk    397            85            17             2      127          -8
+stratum   n  risk_mean  risk_median  pred_surv_at_horizon       rmst  rmst_ci_low  rmst_ci_high  rmst_pred_mean  mae_pred_vs_km
+    low 398   0.607528     0.627986              0.392472 235.548588   222.981197    249.283047      237.573229        0.021497
+    mid 397   0.808103     0.809210              0.191897 187.029765   171.667875    202.411430      181.678175        0.012841
+   high 397   0.951642     0.954663              0.048358 127.267895   117.052437    137.595914      119.360850        0.016561
+Stratum MAE:
++-----------+-------------------------------+
+| Stratum   |   MAE (mean prediction vs KM) |
+|-----------+-------------------------------|
+| low       |                         0.021 |
+| mid       |                         0.013 |
+| high      |                         0.017 |
++-----------+-------------------------------+
+
+mLoT1
+Log-rank p-value (mLoT1 (local tertiles)): 5.66e-92
+
+Risk-set counts (at risk) and RMST:
+   stratum  count  180d_at_risk  365d_at_risk  730d_at_risk  RMST_KM  RMST delta
+Population   2342          1239           766           361      226          -4
+  Low-risk    781           551           392           200      285         -18
+  Mid-risk    781           443           275           115      237          -5
+ High-risk    780           245            99            46      157          11
+stratum   n  risk_mean  risk_median  pred_surv_at_horizon       rmst  rmst_ci_low  rmst_ci_high  rmst_pred_mean  mae_pred_vs_km
+    low 781   0.486591     0.493745              0.513409 285.057068   277.534140    293.283120      266.862388        0.053517
+    mid 781   0.632116     0.628686              0.367884 236.674055   227.856396    246.014986      231.997715        0.019929
+   high 780   0.839792     0.827777              0.160208 156.714446   148.109844    165.089752      167.299775        0.024532
+Stratum MAE:
++-----------+-------------------------------+
+| Stratum   |   MAE (mean prediction vs KM) |
+|-----------+-------------------------------|
+| low       |                         0.054 |
+| mid       |                         0.02  |
+| high      |                         0.025 |
++-----------+-------------------------------+
+
+mLoT2+
+Log-rank p-value (mLoT2+ (local tertiles)): 1.1e-283
+
+Risk-set counts (at risk) and RMST:
+   stratum  count  180d_at_risk  365d_at_risk  730d_at_risk  RMST_KM  RMST delta
+Population   6449          1786           646           191      146          -3
+  Low-risk   2150          1009           472           154      205          -6
+  Mid-risk   2150           538           140            33      138           1
+ High-risk   2149           239            34             4       95          -3
+stratum    n  risk_mean  risk_median  pred_surv_at_horizon       rmst  rmst_ci_low  rmst_ci_high  rmst_pred_mean  mae_pred_vs_km
+    low 2150   0.749570     0.765484              0.250430 204.772290   198.750761    211.845950      198.936954        0.011956
+    mid 2150   0.920171     0.923887              0.079829 138.142466   133.675934    142.173921      138.709220        0.005585
+   high 2149   0.986362     0.988504              0.013638  95.257050    92.424891     98.544204       92.467352        0.008807
+Stratum MAE:
++-----------+-------------------------------+
+| Stratum   |   MAE (mean prediction vs KM) |
+|-----------+-------------------------------|
+| low       |                         0.012 |
+| mid       |                         0.006 |
+| high      |                         0.009 |
++-----------+-------------------------------+
+
+====================================================================================================
+Figure 4. Interpretability analysis for GBSA risk scores
+[fig:shap-compact]
+====================================================================================================
+
+subfigure: fig:shap-individual
++--------------------------------+---------------+
+| Feature                        |   Mean |SHAP| |
+|--------------------------------+---------------|
+| Liver mets in last 90d         |        0.0299 |
+| First metastatic line          |        0.0262 |
+| TP53 mutation                  |        0.0156 |
+| Chemotherapy: non-top-5 agents |        0.0152 |
+| Genomic data missing           |        0.013  |
+| Bone mets in last 90d          |        0.011  |
+| Lymph node mets in last 90d    |        0.011  |
+| Age (years)                    |        0.0077 |
+| CEA max (log, last 180d)       |        0.0076 |
+| Lymph node mets ever           |        0.0076 |
+| Most recent ECOG (last 90d)    |        0.0074 |
+| Lung mets ever                 |        0.0071 |
++--------------------------------+---------------+
+
+subfigure: fig:patient-example-0
+Sample index 7228: base risk=0.8490, predicted 365d progression risk=0.4371
++---------------------------------------------+-----------------+--------------------------+
+| Feature                                     |   Feature value |   SHAP risk contribution |
+|---------------------------------------------+-----------------+--------------------------|
+| First metastatic line                       |          1      |                  -0.0766 |
+| Liver mets in last 90d                      |          0      |                  -0.0419 |
+| Recent imaging, other region: cancer absent |          1      |                  -0.0332 |
+| Targeted therapy: Palbociclib               |          1      |                  -0.0321 |
+| Genomic data missing                        |          1      |                  -0.0254 |
+| Age (years)                                 |          1      |                  -0.0234 |
+| CA15-3 max (last 180d)                      |         -0.9101 |                  -0.0222 |
+| CA15-3 max (last 60d)                       |         -0.9168 |                  -0.0213 |
++---------------------------------------------+-----------------+--------------------------+
+
+subfigure: fig:patient-example-1
+Sample index 5128: base risk=0.8592, predicted 365d progression risk=0.9939
++--------------------------------+-----------------+--------------------------+
+| Feature                        |   Feature value |   SHAP risk contribution |
+|--------------------------------+-----------------+--------------------------|
+| Chemotherapy: non-top-5 agents |           1     |                   0.0324 |
+| Liver mets in last 90d         |           1     |                   0.0223 |
+| CA15-3 max (last 180d)         |           2.043 |                   0.0134 |
+| CEA max (log, last 180d)       |           1.825 |                   0.0122 |
+| Age (years)                    |          -1.111 |                   0.0113 |
+| Most recent ECOG (last 90d)    |           1     |                   0.0106 |
+| First metastatic line          |           0     |                   0.0102 |
++--------------------------------+-----------------+--------------------------+
+
+====================================================================================================
+Figure 5. Modality ablations
+[fig:ablation-only, fig:ablation-exclude]
+====================================================================================================
+
+subfigure: fig:ablation-only
++-----------------------+--------------+-----------+--------+------------+--------+
+| Modality              | Best model   |   C-index |     ΔC |   Mean AUC |   ΔAUC |
+|-----------------------+--------------+-----------+--------+------------+--------|
+| Clinicopathologic     | GBSA         |     0.574 | -0.107 |      0.612 | -0.145 |
+| Genomics              | DeepHit      |     0.605 | -0.076 |      0.658 | -0.098 |
+| Radiology             | DeepSurv     |     0.647 | -0.034 |      0.711 | -0.046 |
+| Surveillance Patterns | DeepSurv     |     0.626 | -0.055 |      0.684 | -0.073 |
+| Treatment             | RSF          |     0.645 | -0.036 |      0.709 | -0.048 |
+| Tumor Markers         | GBSA         |     0.618 | -0.063 |      0.669 | -0.088 |
++-----------------------+--------------+-----------+--------+------------+--------+
+
+subfigure: fig:ablation-exclude
++-----------------------+--------------+-----------+--------+------------+--------+
+| Modality              | Best model   |   C-index |     ΔC |   Mean AUC |   ΔAUC |
+|-----------------------+--------------+-----------+--------+------------+--------|
+| Clinicopathologic     | DeepHit      |     0.681 |  0     |      0.754 | -0.003 |
+| Genomics              | DeepSurv     |     0.681 | -0.001 |      0.755 | -0.002 |
+| Radiology             | DeepHit      |     0.671 | -0.011 |      0.742 | -0.015 |
+| Surveillance Patterns | DeepHit      |     0.682 |  0.001 |      0.756 | -0.001 |
+| Treatment             | DeepHit      |     0.673 | -0.009 |      0.745 | -0.012 |
+| Tumor Markers         | DeepHit      |     0.682 |  0.001 |      0.757 | -0     |
++-----------------------+--------------+-----------+--------+------------+--------+
+
+====================================================================================================
+Main text. Numbers quoted in the text and not shown in a table or figure
+[sec:results, sec:methods]
+====================================================================================================
+
++----------------------------+--------------------------------------------------------+------------------------------+
+| Section                    | Quantity                                               | Value                        |
+|----------------------------+--------------------------------------------------------+------------------------------|
+| PFS labeling and censoring | Censored mLoTs                                         | 1,226 of 8,791               |
+| PFS labeling and censoring | Censored after a documented non-progression assessment | 674                          |
+| PFS labeling and censoring | Administratively censored at 730 d                     | 552                          |
+| PFS labeling and censoring | QC exclusions among eligible lines                     | 2,294 of 11,085              |
+| PFS labeling and censoring | Chemotherapy and endocrine therapy in the same mLoT    | 2,114                        |
+| PFS labeling and censoring | Endocrine therapy in HR-negative disease               | 261                          |
+| PFS labeling and censoring | Flagged lines with both classes in the first 28 days   | 1,589                        |
+| PFS labeling and censoring | Flagged lines with the second class after day 28       | 525 (4.7% of eligible lines) |
+| Feature extraction         | mLoTs with genomic features masked                     | 3,010 of 8,791               |
+| Feature extraction         | Patients with genomic features masked                  | 1,805 of 2,881               |
+| External validation        | Regimens with CA15-3 recorded, DFCI                    | 20.8%                        |
+| External validation        | Regimens with CA15-3 recorded, VICC                    | 3.7%                         |
++----------------------------+--------------------------------------------------------+------------------------------+

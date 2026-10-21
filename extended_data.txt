@@ -1,0 +1,1125 @@
+====================================================================================================
+Extended Data Table 1. Extended Data tables for the breast cancer subset
+====================================================================================================
+
+a. Baseline characteristics of the breast cancer subset
++-------------------------------------------------+---------------+
+| Variable                                        | Overall       |
+|-------------------------------------------------+---------------|
+| n                                               | 2,881         |
+| Age at first modeled line initiation, mean (sd) | 55.5 (12.3)   |
+| Stage at diagnosis                              |               |
+| Stage I–III                                     | 2,047 (71.1%) |
+| Stage IV                                        | 834 (28.9%)   |
++-------------------------------------------------+---------------+
+
+b. Patient-level HR/HER2 status by age at the first retained modeled line (row-wise %)
++-------------+-------+-------+---------+---------+
+| Age group   | HR+   | HR-   | HER2+   | HER2-   |
+|-------------+-------+-------+---------+---------|
+| ≤40         | 74.4  | 25.6  | 28.6    | 71.4    |
+| 41–50       | 79.5  | 20.5  | 21.3    | 78.7    |
+| 51–65       | 79.1  | 20.9  | 14.9    | 85.1    |
+| 66–75       | 83.6  | 16.4  | 11.5    | 88.5    |
+| 76+         | 83.1  | 16.9  | 9.2     | 90.8    |
++-------------+-------+-------+---------+---------+
+
+====================================================================================================
+Extended Data Table 2. Most common first-line metastatic drug combinations at line initiation (mLoT1), stratified by disease subtypes
+====================================================================================================
+
++-----------+--------+--------------------------------------------------------------------------+-------------+
+| Subtype   | Rank   | Regimen                                                                  | # (%)       |
+|-----------+--------+--------------------------------------------------------------------------+-------------|
+| HR-/HER2- | 1      | Chemo Capecitabine                                                       | 76 (19.5%)  |
+|           | 2      | Chemo Other                                                              | 62 (15.9%)  |
+|           | 3      | Chemo Paclitaxel                                                         | 53 (13.6%)  |
+|           | 4      | Chemo Other, Chemo Gemcitabine                                           | 33 (8.5%)   |
+|           | 5      | Chemo Other, Chemo Paclitaxel                                            | 23 (5.9%)   |
+| HR-/HER2+ | 1      | Chemo Paclitaxel, Biologic Pertuzumab, Biologic Trastuzumab              | 54 (38.3%)  |
+|           | 2      | Chemo Doxorubicin, Chemo Cyclophosphamide                                | 8 (5.7%)    |
+|           | 3      | Biologic Trastuzumab                                                     | 7 (5.0%)    |
+|           | 4      | Biologic Pertuzumab, Biologic Trastuzumab                                | 6 (4.3%)    |
+|           | 5      | Biologic Ado-Trastuzumab Emtansine                                       | 6 (4.3%)    |
+| HR+/HER2- | 1      | Hormone Letrozole, Targeted Palbociclib                                  | 196 (12.5%) |
+|           | 2      | Hormone Letrozole                                                        | 137 (8.8%)  |
+|           | 3      | Hormone Other, Hormone Letrozole, Targeted Palbociclib                   | 81 (5.2%)   |
+|           | 4      | Chemo Capecitabine                                                       | 77 (4.9%)   |
+|           | 5      | Hormone Fulvestrant                                                      | 75 (4.8%)   |
+| HR+/HER2+ | 1      | Chemo Paclitaxel, Biologic Pertuzumab, Biologic Trastuzumab              | 41 (16.6%)  |
+|           | 2      | Hormone Letrozole                                                        | 13 (5.3%)   |
+|           | 3      | Biologic Ado-Trastuzumab Emtansine                                       | 12 (4.9%)   |
+|           | 4      | Chemo Other, Chemo Paclitaxel, Biologic Pertuzumab, Biologic Trastuzumab | 10 (4.0%)   |
+|           | 5      | Chemo Paclitaxel, Biologic Trastuzumab, Biologic Investigative           | 9 (3.6%)    |
++-----------+--------+--------------------------------------------------------------------------+-------------+
+
+====================================================================================================
+Extended Data Table 3. Most common mLoT2+ treatment-category combinations at mLoT initiation, stratified by disease subtypes
+====================================================================================================
+
++-----------+--------+---------------------------+---------------+
+| Subtype   | Rank   | Regimen                   | # (%)         |
+|-----------+--------+---------------------------+---------------|
+| HR-/HER2- | 1      | Chemo                     | 418 (65.0%)   |
+|           | 2      | Biologic                  | 70 (10.9%)    |
+|           | 3      | Chemo, Biologic           | 40 (6.2%)     |
+|           | 4      | Chemo, Immuno             | 34 (5.3%)     |
+|           | 5      | Chemo, Targeted           | 29 (4.5%)     |
+| HR-/HER2+ | 1      | Chemo, Biologic           | 99 (33.4%)    |
+|           | 2      | Biologic                  | 82 (27.7%)    |
+|           | 3      | Chemo, Targeted, Biologic | 45 (15.2%)    |
+|           | 4      | Targeted, Biologic        | 20 (6.8%)     |
+|           | 5      | Chemo                     | 20 (6.8%)     |
+| HR+/HER2- | 1      | Chemo                     | 1,940 (42.5%) |
+|           | 2      | Hormone, Targeted         | 1,274 (27.9%) |
+|           | 3      | Hormone                   | 545 (11.9%)   |
+|           | 4      | Chemo, Targeted           | 262 (5.7%)    |
+|           | 5      | Biologic                  | 191 (4.2%)    |
+| HR+/HER2+ | 1      | Chemo, Biologic           | 254 (26.9%)   |
+|           | 2      | Hormone, Biologic         | 186 (19.7%)   |
+|           | 3      | Biologic                  | 136 (14.4%)   |
+|           | 4      | Chemo                     | 64 (6.8%)     |
+|           | 5      | Chemo, Targeted, Biologic | 61 (6.5%)     |
++-----------+--------+---------------------------+---------------+
+
+====================================================================================================
+Extended Data Table 4. Per-horizon performance across models for PFS prediction
+====================================================================================================
+
+a. IPCW-C
++----------+---------------+---------------+---------------+---------------+
+| Model    | 90 d          | 180 d         | 365 d         | 730 d         |
+|----------+---------------+---------------+---------------+---------------|
+| CoxPH    | 0.691 ± 0.008 | 0.682 ± 0.007 | 0.681 ± 0.007 | 0.679 ± 0.007 |
+| DeepHit  | 0.696 ± 0.008 | 0.683 ± 0.007 | 0.675 ± 0.009 | 0.651 ± 0.011 |
+| DeepSurv | 0.694 ± 0.010 | 0.683 ± 0.009 | 0.682 ± 0.010 | 0.680 ± 0.009 |
+| GBSA     | 0.693 ± 0.006 | 0.684 ± 0.006 | 0.683 ± 0.006 | 0.681 ± 0.006 |
+| RSF      | 0.684 ± 0.006 | 0.674 ± 0.006 | 0.671 ± 0.007 | 0.666 ± 0.007 |
++----------+---------------+---------------+---------------+---------------+
+
+b. AUC
++----------+---------------+---------------+---------------+---------------+
+| Model    | 90 d          | 180 d         | 365 d         | 730 d         |
+|----------+---------------+---------------+---------------+---------------|
+| CoxPH    | 0.730 ± 0.008 | 0.759 ± 0.011 | 0.818 ± 0.008 | 0.842 ± 0.013 |
+| DeepHit  | 0.736 ± 0.010 | 0.759 ± 0.012 | 0.811 ± 0.008 | 0.806 ± 0.026 |
+| DeepSurv | 0.732 ± 0.012 | 0.760 ± 0.011 | 0.816 ± 0.012 | 0.841 ± 0.015 |
+| GBSA     | 0.733 ± 0.007 | 0.763 ± 0.011 | 0.824 ± 0.008 | 0.847 ± 0.012 |
+| RSF      | 0.724 ± 0.008 | 0.753 ± 0.012 | 0.814 ± 0.009 | 0.845 ± 0.012 |
++----------+---------------+---------------+---------------+---------------+
+
+c. Brier score
++----------+---------------+---------------+---------------+---------------+
+| Model    | 90 d          | 180 d         | 365 d         | 730 d         |
+|----------+---------------+---------------+---------------+---------------|
+| CoxPH    | 0.202 ± 0.005 | 0.188 ± 0.005 | 0.122 ± 0.006 | 0.075 ± 0.007 |
+| DeepHit  | 0.221 ± 0.004 | 0.210 ± 0.006 | 0.137 ± 0.009 | 0.087 ± 0.011 |
+| DeepSurv | 0.201 ± 0.006 | 0.187 ± 0.006 | 0.121 ± 0.007 | 0.075 ± 0.007 |
+| GBSA     | 0.201 ± 0.004 | 0.186 ± 0.005 | 0.119 ± 0.006 | 0.074 ± 0.007 |
+| RSF      | 0.204 ± 0.005 | 0.189 ± 0.006 | 0.121 ± 0.006 | 0.074 ± 0.007 |
++----------+---------------+---------------+---------------+---------------+
+
+====================================================================================================
+Extended Data Table 5. Feature-level baseline value contrasts between high- and low-risk tertiles (GBSA)
+====================================================================================================
+
++-----------+------------------------------------------------+
+| Cohort    | Top 5 baseline features (Cohen's d, H–L)       |
+|-----------+------------------------------------------------|
+| HR-/HER2- | TP53 mutation (+1.240)                         |
+|           | Chemotherapy: non-top-5 agents (+1.182)        |
+|           | Liver mets in last 90d (+1.180)                |
+|           | Liver mets ever (+1.126)                       |
+|           | Cancer reported; screened chest (+1.012)       |
+| HR-/HER2+ | Cancer reported; screened abdomen (+1.524)     |
+|           | Cancer reported; screened pelvis (+1.524)      |
+|           | Cancer reported; screened chest (+1.490)       |
+|           | TP53 mutation (+1.400)                         |
+|           | Recent imaging, chest: cancer present (+1.080) |
+| HR+/HER2- | Liver mets in last 90d (+1.788)                |
+|           | Liver mets ever (+1.780)                       |
+|           | CA15-3 > 30 U/mL (last value) (+1.369)         |
+|           | Chemotherapy: non-top-5 agents (+1.307)        |
+|           | CA15-3 max (last 180d) (+1.235)                |
+| HR+/HER2+ | Liver mets in last 90d (+1.429)                |
+|           | CA15-3 > 30 U/mL (last value) (+1.224)         |
+|           | Cancer reported; screened chest (+1.101)       |
+|           | Cancer reported; screened pelvis (+1.081)      |
+|           | CEA > 5 ng/mL (last value) (+1.077)            |
+| mLoT1     | No CEA in last 180d (-1.088)                   |
+|           | No CA15-3 in last 180d (-1.078)                |
+|           | TP53 mutation (+1.022)                         |
+|           | No CEA in last 60d (-1.020)                    |
+|           | No CA15-3 in last 60d (-1.009)                 |
+| mLoT2+    | Liver mets in last 90d (+1.671)                |
+|           | Chemotherapy: non-top-5 agents (+1.457)        |
+|           | Liver mets ever (+1.192)                       |
+|           | CA15-3 max (last 180d) (+1.117)                |
+|           | CA15-3 last value (log) (+1.076)               |
++-----------+------------------------------------------------+
+
+====================================================================================================
+Extended Data Table 6. Group-level SHAP contribution contrasts between high- and low-risk tertiles (GBSA)
+====================================================================================================
+
++-----------+------------------------------------+-------------------+
+| Cohort    | Top 5 feature groups               | Cohen's d (H–L)   |
+|-----------+------------------------------------+-------------------|
+| HR-/HER2- | Tumor marker kinetics              | -1.156            |
+|           | Imaging coverage and cancer status | -0.986            |
+|           | Genomics and therapeutic targets   | +0.910            |
+|           | Measurement cadence                | -0.805            |
+|           | Treatment exposure                 | +0.541            |
+| HR-/HER2+ | Genomics and therapeutic targets   | +1.184            |
+|           | Imaging coverage and cancer status | -0.846            |
+|           | Recent ECOG status                 | +0.728            |
+|           | Measurement cadence                | -0.427            |
+|           | Tumor marker kinetics              | -0.409            |
+| HR+/HER2- | Measurement cadence                | -0.841            |
+|           | Imaging coverage and cancer status | -0.833            |
+|           | Genomics and therapeutic targets   | +0.669            |
+|           | Recent ECOG status                 | +0.560            |
+|           | Initial diagnosis                  | -0.408            |
+| HR+/HER2+ | Imaging coverage and cancer status | -0.640            |
+|           | Recent ECOG status                 | +0.558            |
+|           | Tumor site burden                  | +0.445            |
+|           | Tumor marker kinetics              | -0.311            |
+|           | Treatment exposure                 | -0.203            |
+| mLoT1     | Genomics and therapeutic targets   | +1.114            |
+|           | Recent ECOG status                 | +0.853            |
+|           | Treatment exposure                 | -0.653            |
+|           | Tumor marker kinetics              | -0.511            |
+|           | Initial diagnosis                  | +0.349            |
+| mLoT2+    | Imaging coverage and cancer status | -0.816            |
+|           | Initial diagnosis                  | -0.799            |
+|           | Treatment exposure                 | +0.747            |
+|           | Measurement cadence                | -0.665            |
+|           | Tumor marker kinetics              | -0.415            |
++-----------+------------------------------------+-------------------+
+
+====================================================================================================
+Extended Data Table 7. Descriptive mean performance differences across five outer test folds, without versus with treatment masking
+====================================================================================================
+
++----------+----------+-----------+----------+
+| model    | ΔC       | Δ IBS     | Δ AUC    |
+|----------+----------+-----------+----------|
+| coxph    | 0.012541 | -0.005267 | 0.016274 |
+| deephit  | 0.012488 | -0.001671 | 0.016130 |
+| deepsurv | 0.014982 | -0.005888 | 0.019954 |
+| gbsa     | 0.010389 | -0.004447 | 0.013161 |
+| rsf      | 0.004182 | -0.002841 | 0.006082 |
++----------+----------+-----------+----------+
+
+====================================================================================================
+Extended Data Table 8. Global performance metrics without late-start treatment masking
+====================================================================================================
+
++----------+---------------+---------------+---------------+---------------+---------------+
+| Metric   | CoxPH         | DeepHit       | DeepSurv      | GBSA          | RSF           |
+|----------+---------------+---------------+---------------+---------------+---------------|
+| C-index  | 0.691 ± 0.007 | 0.697 ± 0.008 | 0.695 ± 0.006 | 0.692 ± 0.007 | 0.678 ± 0.005 |
+| mean AUC | 0.770 ± 0.008 | 0.775 ± 0.008 | 0.775 ± 0.006 | 0.770 ± 0.007 | 0.753 ± 0.005 |
+| AUC @ 1y | 0.840 ± 0.010 | 0.831 ± 0.009 | 0.838 ± 0.005 | 0.842 ± 0.010 | 0.826 ± 0.006 |
+| AUC @ 2y | 0.860 ± 0.012 | 0.827 ± 0.026 | 0.856 ± 0.014 | 0.864 ± 0.012 | 0.859 ± 0.010 |
+| IBS      | 0.120 ± 0.004 | 0.139 ± 0.007 | 0.120 ± 0.004 | 0.120 ± 0.004 | 0.123 ± 0.004 |
++----------+---------------+---------------+---------------+---------------+---------------+
+
+====================================================================================================
+Extended Data Table 9. Descriptive mean performance differences across five outer test folds, with age excluded versus included
+====================================================================================================
+
++----------+-----------+-----------+-----------+
+| model    | ΔC        | Δ IBS     | Δ AUC     |
+|----------+-----------+-----------+-----------|
+| coxph    | -0.001281 | 0.000178  | -0.001744 |
+| deephit  | -0.008931 | 0.005091  | -0.011663 |
+| deepsurv | -0.001944 | -0.000017 | -0.002720 |
+| gbsa     | -0.001095 | 0.000001  | -0.001501 |
+| rsf      | 0.000242  | -0.000417 | 0.000824  |
++----------+-----------+-----------+-----------+
+
+====================================================================================================
+Extended Data Table 10. Global performance metrics with age excluded from baseline covariates (age ablation)
+====================================================================================================
+
++----------+---------------+---------------+---------------+---------------+---------------+
+| Metric   | CoxPH         | DeepHit       | DeepSurv      | GBSA          | RSF           |
+|----------+---------------+---------------+---------------+---------------+---------------|
+| C-index  | 0.678 ± 0.007 | 0.676 ± 0.011 | 0.678 ± 0.009 | 0.680 ± 0.006 | 0.675 ± 0.007 |
+| mean AUC | 0.752 ± 0.008 | 0.747 ± 0.015 | 0.752 ± 0.012 | 0.755 ± 0.007 | 0.748 ± 0.006 |
+| AUC @ 1y | 0.818 ± 0.008 | 0.802 ± 0.015 | 0.815 ± 0.011 | 0.824 ± 0.007 | 0.814 ± 0.008 |
+| AUC @ 2y | 0.842 ± 0.013 | 0.783 ± 0.043 | 0.840 ± 0.015 | 0.848 ± 0.014 | 0.847 ± 0.013 |
+| IBS      | 0.126 ± 0.004 | 0.145 ± 0.009 | 0.125 ± 0.005 | 0.124 ± 0.004 | 0.125 ± 0.004 |
++----------+---------------+---------------+---------------+---------------+---------------+
+
+====================================================================================================
+Extended Data Table 11. Global performance metrics under the 14-day treatment-window sensitivity analysis
+====================================================================================================
+
++----------+---------------+---------------+---------------+---------------+---------------+
+| Metric   | CoxPH         | DeepHit       | DeepSurv      | GBSA          | RSF           |
+|----------+---------------+---------------+---------------+---------------+---------------|
+| C-index  | 0.677 ± 0.006 | 0.682 ± 0.006 | 0.679 ± 0.006 | 0.680 ± 0.006 | 0.672 ± 0.006 |
+| mean AUC | 0.750 ± 0.007 | 0.754 ± 0.007 | 0.753 ± 0.007 | 0.753 ± 0.008 | 0.742 ± 0.009 |
+| AUC @ 1y | 0.814 ± 0.008 | 0.811 ± 0.008 | 0.816 ± 0.012 | 0.819 ± 0.009 | 0.807 ± 0.007 |
+| AUC @ 2y | 0.839 ± 0.029 | 0.812 ± 0.030 | 0.843 ± 0.024 | 0.845 ± 0.027 | 0.838 ± 0.025 |
+| IBS      | 0.128 ± 0.002 | 0.144 ± 0.002 | 0.127 ± 0.003 | 0.127 ± 0.002 | 0.129 ± 0.001 |
++----------+---------------+---------------+---------------+---------------+---------------+
+
+====================================================================================================
+Extended Data Table 12. Global performance metrics under the 42-day treatment-window sensitivity analysis
+====================================================================================================
+
++----------+---------------+---------------+---------------+---------------+---------------+
+| Metric   | CoxPH         | DeepHit       | DeepSurv      | GBSA          | RSF           |
+|----------+---------------+---------------+---------------+---------------+---------------|
+| C-index  | 0.677 ± 0.008 | 0.680 ± 0.007 | 0.680 ± 0.007 | 0.680 ± 0.007 | 0.674 ± 0.006 |
+| mean AUC | 0.755 ± 0.009 | 0.757 ± 0.008 | 0.758 ± 0.010 | 0.758 ± 0.008 | 0.750 ± 0.008 |
+| AUC @ 1y | 0.815 ± 0.006 | 0.811 ± 0.007 | 0.817 ± 0.006 | 0.821 ± 0.007 | 0.812 ± 0.009 |
+| AUC @ 2y | 0.841 ± 0.013 | 0.812 ± 0.017 | 0.843 ± 0.014 | 0.848 ± 0.012 | 0.844 ± 0.011 |
+| IBS      | 0.126 ± 0.004 | 0.141 ± 0.006 | 0.124 ± 0.004 | 0.124 ± 0.004 | 0.125 ± 0.004 |
++----------+---------------+---------------+---------------+---------------+---------------+
+
+====================================================================================================
+Extended Data Table 13. Global performance metrics from pooled out-of-fold predictions for all modeled mLoTs
+====================================================================================================
+
++----------+----------------------+----------------------+----------------------+----------------------+----------------------+
+| Metric   | CoxPH                | DeepHit              | DeepSurv             | GBSA                 | RSF                  |
+|----------+----------------------+----------------------+----------------------+----------------------+----------------------|
+| C-index  | 0.678 (0.672, 0.685) | 0.683 (0.676, 0.690) | 0.678 (0.671, 0.685) | 0.681 (0.674, 0.687) | 0.673 (0.667, 0.680) |
+| mean AUC | 0.754 (0.745, 0.762) | 0.757 (0.748, 0.766) | 0.753 (0.744, 0.762) | 0.757 (0.748, 0.765) | 0.746 (0.737, 0.755) |
+| AUC @ 1y | 0.818 (0.806, 0.829) | 0.811 (0.800, 0.822) | 0.814 (0.802, 0.826) | 0.824 (0.812, 0.835) | 0.813 (0.802, 0.824) |
+| AUC @ 2y | 0.843 (0.828, 0.856) | 0.799 (0.782, 0.817) | 0.842 (0.826, 0.855) | 0.848 (0.834, 0.861) | 0.845 (0.830, 0.859) |
+| IBS      | 0.126 (0.122, 0.129) | 0.140 (0.136, 0.145) | 0.125 (0.122, 0.129) | 0.124 (0.121, 0.128) | 0.126 (0.123, 0.129) |
++----------+----------------------+----------------------+----------------------+----------------------+----------------------+
+
+====================================================================================================
+Extended Data Table 14. Best-performing model configurations selected on outer folds, with selection counts
+====================================================================================================
+
++----------+-----------------------------------+
+| Model    | Selected configurations (count)   |
+|----------+-----------------------------------|
+| CoxPH    | alpha-727.895 (4)                 |
+|          | alpha-529.832 (1)                 |
+| DeepHit  | dh104-base-strongreg (5)          |
+| DeepSurv | ds-lite-64-strongreg (5)          |
+| GBSA     | gbsa-simple-400 (5)               |
+| RSF      | rsf-mid-400 (3)                   |
+|          | rsf-simple-400 (2)                |
++----------+-----------------------------------+
+
+====================================================================================================
+Extended Data Table 15. Sensitivity to the QC exclusions
+====================================================================================================
+
++---------------------------------------------+---------+------------+--------+--------+
+| Cohort                                      | Lines   | Patients   | C      | IBS    |
+|---------------------------------------------+---------+------------+--------+--------|
+| Original retained cohort                    | 8,791   | 2,881      | 0.6807 | 0.1241 |
+| All eligible lines, including QC exclusions | 11,085  | 3,174      | 0.6815 | 0.1258 |
+| QC-excluded lines only                      | 2,294   | 1,369      | 0.6953 | 0.1324 |
++---------------------------------------------+---------+------------+--------+--------+
+
+====================================================================================================
+Extended Data Table 16. Feature-group selection rules used for grouped attribution analyses
+====================================================================================================
+
++------------------------------------+---------------------------------------------------------------------------------+
+| Feature group                      | Selection rule                                                                  |
+|------------------------------------+---------------------------------------------------------------------------------|
+| Tumor marker kinetics              | Prefixes CA15_3_ and CEA_; exclude regex _MISSING$ and _LAST_OBS_DAY$.          |
+| Recent ECOG status                 | Exact features ECOG_LAST_OBS and EVER_GE2_180D.                                 |
+| Tumor site burden                  | Regex ^TUMOR_SITE_.*_(IN_WINDOW|EVER)$.                                         |
+| Genomics and therapeutic targets   | Exact features HR and HER2; prefixes PDL1, MMR, and GENOMICS; exclude exact     |
+|                                    | feature GENOMICS_MISSING.                                                       |
+| Initial diagnosis                  | Prefixes STAGE, CLINICAL_GROUP, PATH_GROUP, HISTOLOGIC, SUMMARY,                |
+|                                    | CANCER_SITE_SUBSITE, AGE, and GENDER_IS_FEMALE.                                 |
+| Treatment exposure                 | Prefixes PLANNED_ and IS_MLOT.                                                  |
+| Imaging coverage and cancer status | Regex ^CANCER_.*_IMAGED_(Y|N|INDET)_STATUS$ and ^CANCER_.*_EVER$; exclude regex |
+|                                    | ^CANCER_SITE_SUBSITE_.                                                          |
+| Measurement cadence                | Exact features ECOG_LAST_OBS_DAY, ECOG_MISSING, and GENOMICS_MISSING; regex     |
+|                                    | ^CANCER_.*_MISSING$, ^CA15_3_.*_MISSING$, ^CEA_.*_MISSING$,                     |
+|                                    | ^CA15_3_LAST_OBS_DAY$, and ^CEA_LAST_OBS_DAY$.                                  |
++------------------------------------+---------------------------------------------------------------------------------+
+
+====================================================================================================
+Extended Data Table 17. External evaluation on AACR Project GENIE BPC metastatic breast-cancer regimens at DFCI and VICC
+====================================================================================================
+
+Released PFS-I: Progressing or death
++---------------+------------+------------+----------+---------------+---------------+---------------+---------------+---------------+
+| Institution   | Regimens   | Patients   | Events   | C             | AUC           | AUC@1y        | AUC@2y        | IBS           |
+|---------------+------------+------------+----------+---------------+---------------+---------------+---------------+---------------|
+| DFCI          | 1,398      | 317        | 942      | 0.643 ± 0.002 | 0.707 ± 0.003 | 0.731 ± 0.006 | 0.755 ± 0.010 | 0.171 ± 0.001 |
+| VICC          | 701        | 153        | 460      | 0.626 ± 0.006 | 0.691 ± 0.007 | 0.750 ± 0.008 | 0.780 ± 0.009 | 0.163 ± 0.001 |
++---------------+------------+------------+----------+---------------+---------------+---------------+---------------+---------------+
+
+PFS-I + Mixed (main analysis): Progressing or Mixed, or death
++---------------+------------+------------+----------+---------------+---------------+---------------+---------------+---------------+
+| Institution   | Regimens   | Patients   | Events   | C             | AUC           | AUC@1y        | AUC@2y        | IBS           |
+|---------------+------------+------------+----------+---------------+---------------+---------------+---------------+---------------|
+| DFCI          | 1,394      | 317        | 987      | 0.649 ± 0.002 | 0.714 ± 0.003 | 0.737 ± 0.006 | 0.770 ± 0.010 | 0.166 ± 0.001 |
+| VICC          | 695        | 152        | 485      | 0.634 ± 0.006 | 0.700 ± 0.007 | 0.758 ± 0.009 | 0.799 ± 0.010 | 0.159 ± 0.001 |
++---------------+------------+------------+----------+---------------+---------------+---------------+---------------+---------------+
+
+====================================================================================================
+Extended Data Table 18. Complete model input list
+====================================================================================================
+
+Treatment (36 inputs)
++---------------------------------------------------+-----------------+------+
+| Input name                                        | Feature group   | SP   |
+|---------------------------------------------------+-----------------+------|
+| PLANNED_AGENT_HORMONE_FULVESTRANT                 | TREATMENT       | No   |
+| PLANNED_AGENT_CHEMO_OTHER                         | TREATMENT       | No   |
+| PLANNED_AGENT_CHEMO_CAPECITABINE                  | TREATMENT       | No   |
+| PLANNED_AGENT_HORMONE_EXEMESTANE                  | TREATMENT       | No   |
+| PLANNED_AGENT_TARGETED_INVESTIGATIVE              | TREATMENT       | No   |
+| PLANNED_AGENT_BONE TREATMENT_ZOLEDRONIC ACID      | TREATMENT       | No   |
+| PLANNED_AGENT_CHEMO_PACLITAXEL                    | TREATMENT       | No   |
+| PLANNED_AGENT_CHEMO_GEMCITABINE                   | TREATMENT       | No   |
+| PLANNED_AGENT_HORMONE_OTHER                       | TREATMENT       | No   |
+| PLANNED_AGENT_HORMONE_LETROZOLE                   | TREATMENT       | No   |
+| PLANNED_AGENT_BIOLOGIC_ADO-TRASTUZUMAB EMTANSINE  | TREATMENT       | No   |
+| PLANNED_AGENT_CHEMO_DOXORUBICIN                   | TREATMENT       | No   |
+| PLANNED_AGENT_BIOLOGIC_PERTUZUMAB                 | TREATMENT       | No   |
+| PLANNED_AGENT_BIOLOGIC_TRASTUZUMAB                | TREATMENT       | No   |
+| PLANNED_AGENT_TARGETED_OTHER                      | TREATMENT       | No   |
+| PLANNED_AGENT_OTHER_INVESTIGATIVE                 | TREATMENT       | No   |
+| PLANNED_AGENT_TARGETED_ABEMACICLIB                | TREATMENT       | No   |
+| PLANNED_AGENT_TARGETED_EVEROLIMUS                 | TREATMENT       | No   |
+| PLANNED_AGENT_HORMONE_TAMOXIFEN                   | TREATMENT       | No   |
+| PLANNED_AGENT_TARGETED_PALBOCICLIB                | TREATMENT       | No   |
+| PLANNED_AGENT_BIOLOGIC_INVESTIGATIVE              | TREATMENT       | No   |
+| PLANNED_AGENT_CHEMO_CYCLOPHOSPHAMIDE              | TREATMENT       | No   |
+| PLANNED_AGENT_HORMONE_ANASTROZOLE                 | TREATMENT       | No   |
+| PLANNED_AGENT_IMMUNO_PEMBROLIZUMAB                | TREATMENT       | No   |
+| PLANNED_AGENT_BIOLOGIC_OTHER                      | TREATMENT       | No   |
+| PLANNED_AGENT_IMMUNO_INVESTIGATIVE                | TREATMENT       | No   |
+| PLANNED_AGENT_TARGETED_ALPELISIB                  | TREATMENT       | No   |
+| PLANNED_AGENT_BIOLOGIC_FAM-TRASTUZUMAB DERUXTECAN | TREATMENT       | No   |
+| PLANNED_AGENT_BONE TREATMENT_PAMIDRONATE          | TREATMENT       | No   |
+| PLANNED_AGENT_OTHER_LETROZOLE-RIBOCICLIB          | TREATMENT       | No   |
+| PLANNED_AGENT_IMMUNO_ATEZOLIZUMAB                 | TREATMENT       | No   |
+| PLANNED_AGENT_IMMUNO_IPILIMUMAB                   | TREATMENT       | No   |
+| PLANNED_AGENT_IMMUNO_NIVOLUMAB                    | TREATMENT       | No   |
+| PLANNED_SURGERY                                   | LOCAL_TREATMENT | No   |
+| PLANNED_RADIATION_THERAPY                         | LOCAL_TREATMENT | No   |
+| IS_MLOT1                                          | TREATMENT       | No   |
++---------------------------------------------------+-----------------+------+
+
+Genomics (52 inputs)
++-------------------------------+-----------------+------+
+| Input name                    | Feature group   | SP   |
+|-------------------------------+-----------------+------|
+| PDL1_POS                      | PDL1            | No   |
+| PDL1_NEG                      | PDL1            | No   |
+| PDL1_UNKNOWN                  | PDL1            | No   |
+| MMR_NEG                       | MMR             | No   |
+| MMR_POS                       | MMR             | No   |
+| MMR_UNKNOWN                   | MMR             | No   |
+| GENOMICS_MUTATION_AKT1        | GENOMICS        | No   |
+| GENOMICS_MUTATION_ARID1A      | GENOMICS        | No   |
+| GENOMICS_MUTATION_ATM         | GENOMICS        | No   |
+| GENOMICS_MUTATION_BRCA1       | GENOMICS        | No   |
+| GENOMICS_MUTATION_BRCA2       | GENOMICS        | No   |
+| GENOMICS_MUTATION_CBFB        | GENOMICS        | No   |
+| GENOMICS_MUTATION_CDH1        | GENOMICS        | No   |
+| GENOMICS_MUTATION_CDKN1B      | GENOMICS        | No   |
+| GENOMICS_MUTATION_ESR1        | GENOMICS        | No   |
+| GENOMICS_MUTATION_FOXA1       | GENOMICS        | No   |
+| GENOMICS_MUTATION_GATA3       | GENOMICS        | No   |
+| GENOMICS_MUTATION_KMT2C       | GENOMICS        | No   |
+| GENOMICS_MUTATION_KMT2D       | GENOMICS        | No   |
+| GENOMICS_MUTATION_MAP2K4      | GENOMICS        | No   |
+| GENOMICS_MUTATION_MAP3K1      | GENOMICS        | No   |
+| GENOMICS_MUTATION_NCOR1       | GENOMICS        | No   |
+| GENOMICS_MUTATION_NF1         | GENOMICS        | No   |
+| GENOMICS_MUTATION_PIK3CA      | GENOMICS        | No   |
+| GENOMICS_MUTATION_PIK3R1      | GENOMICS        | No   |
+| GENOMICS_MUTATION_PTEN        | GENOMICS        | No   |
+| GENOMICS_MUTATION_RB1         | GENOMICS        | No   |
+| GENOMICS_MUTATION_RUNX1       | GENOMICS        | No   |
+| GENOMICS_MUTATION_SF3B1       | GENOMICS        | No   |
+| GENOMICS_MUTATION_TBX3        | GENOMICS        | No   |
+| GENOMICS_MUTATION_TP53        | GENOMICS        | No   |
+| GENOMICS_AMPLIFICATION_CCND1  | GENOMICS        | No   |
+| GENOMICS_AMPLIFICATION_CCNE1  | GENOMICS        | No   |
+| GENOMICS_AMPLIFICATION_EGFR   | GENOMICS        | No   |
+| GENOMICS_AMPLIFICATION_ERBB2  | GENOMICS        | No   |
+| GENOMICS_AMPLIFICATION_FGFR1  | GENOMICS        | No   |
+| GENOMICS_AMPLIFICATION_FGFR2  | GENOMICS        | No   |
+| GENOMICS_AMPLIFICATION_FOXA1  | GENOMICS        | No   |
+| GENOMICS_AMPLIFICATION_IGF1R  | GENOMICS        | No   |
+| GENOMICS_AMPLIFICATION_MCL1   | GENOMICS        | No   |
+| GENOMICS_AMPLIFICATION_MYC    | GENOMICS        | No   |
+| GENOMICS_AMPLIFICATION_PAK1   | GENOMICS        | No   |
+| GENOMICS_AMPLIFICATION_PIK3CA | GENOMICS        | No   |
+| GENOMICS_DELETION_ATM         | GENOMICS        | No   |
+| GENOMICS_DELETION_BRCA1       | GENOMICS        | No   |
+| GENOMICS_DELETION_BRCA2       | GENOMICS        | No   |
+| GENOMICS_DELETION_CDKN2A      | GENOMICS        | No   |
+| GENOMICS_DELETION_CDKN2B      | GENOMICS        | No   |
+| GENOMICS_DELETION_MAP2K4      | GENOMICS        | No   |
+| GENOMICS_DELETION_PTEN        | GENOMICS        | No   |
+| GENOMICS_DELETION_RB1         | GENOMICS        | No   |
+| GENOMICS_MISSING              | GENOMICS        | Yes  |
++-------------------------------+-----------------+------+
+
+Clinicopathologic (36 inputs)
++--------------------------------------------------+-----------------+------+
+| Input name                                       | Feature group   | SP   |
+|--------------------------------------------------+-----------------+------|
+| ECOG_LAST_OBS                                    | ECOG            | No   |
+| ECOG_LAST_OBS_DAY                                | ECOG            | Yes  |
+| EVER_GE2_180D                                    | ECOG            | No   |
+| ECOG_MISSING                                     | ECOG            | Yes  |
+| GENDER_IS_FEMALE                                 | CLINICAL        | No   |
+| AGE                                              | CLINICAL        | No   |
+| HR                                               | CLINICAL        | No   |
+| HER2                                             | CLINICAL        | No   |
+| STAGE_CDM_DERIVED_IV                             | DIAGNOSIS       | No   |
+| CLINICAL_GROUP_0                                 | DIAGNOSIS       | No   |
+| CLINICAL_GROUP_1                                 | DIAGNOSIS       | No   |
+| CLINICAL_GROUP_2                                 | DIAGNOSIS       | No   |
+| CLINICAL_GROUP_3                                 | DIAGNOSIS       | No   |
+| CLINICAL_GROUP_4                                 | DIAGNOSIS       | No   |
+| CLINICAL_GROUP_8                                 | DIAGNOSIS       | No   |
+| CLINICAL_GROUP_9                                 | DIAGNOSIS       | No   |
+| PATH_GROUP_0                                     | DIAGNOSIS       | No   |
+| PATH_GROUP_1                                     | DIAGNOSIS       | No   |
+| PATH_GROUP_2                                     | DIAGNOSIS       | No   |
+| PATH_GROUP_3                                     | DIAGNOSIS       | No   |
+| PATH_GROUP_4                                     | DIAGNOSIS       | No   |
+| PATH_GROUP_8                                     | DIAGNOSIS       | No   |
+| PATH_GROUP_9                                     | DIAGNOSIS       | No   |
+| HISTOLOGIC_INFILTRATING DUCT CARCINOMA           | DIAGNOSIS       | No   |
+| HISTOLOGIC_LOBULAR CA + IFDC/DCIS                | DIAGNOSIS       | No   |
+| HISTOLOGIC_LOBULAR CARCINOMA, NOS                | DIAGNOSIS       | No   |
+| HISTOLOGIC_OTHER                                 | DIAGNOSIS       | No   |
+| SUMMARY_DISTANT                                  | DIAGNOSIS       | No   |
+| SUMMARY_IN_SITU                                  | DIAGNOSIS       | No   |
+| SUMMARY_LOCALIZED                                | DIAGNOSIS       | No   |
+| SUMMARY_REGIONAL                                 | DIAGNOSIS       | No   |
+| SUMMARY_UNKNOWN                                  | DIAGNOSIS       | No   |
+| CANCER_SITE_SUBSITE_NOS                          | DIAGNOSIS       | No   |
+| CANCER_SITE_SUBSITE_OTHER                        | DIAGNOSIS       | No   |
+| CANCER_SITE_SUBSITE_OVERLAPPING LESION OF BREAST | DIAGNOSIS       | No   |
+| CANCER_SITE_SUBSITE_UOQ                          | DIAGNOSIS       | No   |
++--------------------------------------------------+-----------------+------+
+
+Tumor markers (36 inputs)
++-------------------------+-----------------+------+
+| Input name              | Feature group   | SP   |
+|-------------------------+-----------------+------|
+| CA15_3_SHORT_RW_MEAN    | TUMOR_MARKERS   | No   |
+| CA15_3_SHORT_MAX        | TUMOR_MARKERS   | No   |
+| CA15_3_SHORT_MIN        | TUMOR_MARKERS   | No   |
+| CA15_3_SHORT_MISSING    | TUMOR_MARKERS   | Yes  |
+| CA15_3_SHORT_SLOPE      | TUMOR_MARKERS   | No   |
+| CA15_3_SHORT_DELTA_LAST | TUMOR_MARKERS   | No   |
+| CA15_3_LONG_RW_MEAN     | TUMOR_MARKERS   | No   |
+| CA15_3_LONG_MAX         | TUMOR_MARKERS   | No   |
+| CA15_3_LONG_MIN         | TUMOR_MARKERS   | No   |
+| CA15_3_LONG_MISSING     | TUMOR_MARKERS   | Yes  |
+| CA15_3_LONG_SLOPE       | TUMOR_MARKERS   | No   |
+| CA15_3_LONG_DELTA_LAST  | TUMOR_MARKERS   | No   |
+| CA15_3_LAST_OBS_LOG     | TUMOR_MARKERS   | No   |
+| CA15_3_LAST_OBS_DAY     | TUMOR_MARKERS   | Yes  |
+| CA15_3_SHORT_OVER_LONG  | TUMOR_MARKERS   | No   |
+| CA15_3_SHORT_MINUS_LONG | TUMOR_MARKERS   | No   |
+| CA15_3_ABOVE_CUTOFF     | TUMOR_MARKERS   | No   |
+| CA15_3_RISE_GT20PCT     | TUMOR_MARKERS   | No   |
+| CEA_SHORT_RW_MEAN       | TUMOR_MARKERS   | No   |
+| CEA_SHORT_MAX           | TUMOR_MARKERS   | No   |
+| CEA_SHORT_MIN           | TUMOR_MARKERS   | No   |
+| CEA_SHORT_MISSING       | TUMOR_MARKERS   | Yes  |
+| CEA_SHORT_SLOPE         | TUMOR_MARKERS   | No   |
+| CEA_SHORT_DELTA_LAST    | TUMOR_MARKERS   | No   |
+| CEA_LONG_RW_MEAN        | TUMOR_MARKERS   | No   |
+| CEA_LONG_MAX            | TUMOR_MARKERS   | No   |
+| CEA_LONG_MIN            | TUMOR_MARKERS   | No   |
+| CEA_LONG_MISSING        | TUMOR_MARKERS   | Yes  |
+| CEA_LONG_SLOPE          | TUMOR_MARKERS   | No   |
+| CEA_LONG_DELTA_LAST     | TUMOR_MARKERS   | No   |
+| CEA_LAST_OBS_LOG        | TUMOR_MARKERS   | No   |
+| CEA_LAST_OBS_DAY        | TUMOR_MARKERS   | Yes  |
+| CEA_SHORT_OVER_LONG     | TUMOR_MARKERS   | No   |
+| CEA_SHORT_MINUS_LONG    | TUMOR_MARKERS   | No   |
+| CEA_ABOVE_CUTOFF        | TUMOR_MARKERS   | No   |
+| CEA_RISE_GT20PCT        | TUMOR_MARKERS   | No   |
++-------------------------+-----------------+------+
+
+Radiology (45 inputs)
++------------------------------------------+-----------------+------+
+| Input name                               | Feature group   | SP   |
+|------------------------------------------+-----------------+------|
+| CANCER_CHEST_IMAGED_Y_STATUS             | CANCER_PRESENCE | Yes  |
+| CANCER_CHEST_IMAGED_N_STATUS             | CANCER_PRESENCE | Yes  |
+| CANCER_CHEST_IMAGED_INDET_STATUS         | CANCER_PRESENCE | Yes  |
+| CANCER_CHEST_MISSING                     | CANCER_PRESENCE | Yes  |
+| CANCER_CHEST_EVER                        | CANCER_PRESENCE | No   |
+| CANCER_ABDOMEN_IMAGED_Y_STATUS           | CANCER_PRESENCE | Yes  |
+| CANCER_ABDOMEN_IMAGED_N_STATUS           | CANCER_PRESENCE | Yes  |
+| CANCER_ABDOMEN_IMAGED_INDET_STATUS       | CANCER_PRESENCE | Yes  |
+| CANCER_ABDOMEN_MISSING                   | CANCER_PRESENCE | Yes  |
+| CANCER_ABDOMEN_EVER                      | CANCER_PRESENCE | No   |
+| CANCER_PELVIS_IMAGED_Y_STATUS            | CANCER_PRESENCE | Yes  |
+| CANCER_PELVIS_IMAGED_N_STATUS            | CANCER_PRESENCE | Yes  |
+| CANCER_PELVIS_IMAGED_INDET_STATUS        | CANCER_PRESENCE | Yes  |
+| CANCER_PELVIS_MISSING                    | CANCER_PRESENCE | Yes  |
+| CANCER_PELVIS_EVER                       | CANCER_PRESENCE | No   |
+| CANCER_HEAD_IMAGED_Y_STATUS              | CANCER_PRESENCE | Yes  |
+| CANCER_HEAD_IMAGED_N_STATUS              | CANCER_PRESENCE | Yes  |
+| CANCER_HEAD_IMAGED_INDET_STATUS          | CANCER_PRESENCE | Yes  |
+| CANCER_HEAD_MISSING                      | CANCER_PRESENCE | Yes  |
+| CANCER_HEAD_EVER                         | CANCER_PRESENCE | No   |
+| CANCER_OTHER_IMAGED_Y_STATUS             | CANCER_PRESENCE | Yes  |
+| CANCER_OTHER_IMAGED_N_STATUS             | CANCER_PRESENCE | Yes  |
+| CANCER_OTHER_IMAGED_INDET_STATUS         | CANCER_PRESENCE | Yes  |
+| CANCER_OTHER_MISSING                     | CANCER_PRESENCE | Yes  |
+| CANCER_OTHER_EVER                        | CANCER_PRESENCE | No   |
+| TUMOR_SITE_ADRENAL GLANDS_IN_WINDOW      | TUMOR_SITES     | No   |
+| TUMOR_SITE_ADRENAL GLANDS_EVER           | TUMOR_SITES     | No   |
+| TUMOR_SITE_BONE_IN_WINDOW                | TUMOR_SITES     | No   |
+| TUMOR_SITE_BONE_EVER                     | TUMOR_SITES     | No   |
+| TUMOR_SITE_CNS/BRAIN_IN_WINDOW           | TUMOR_SITES     | No   |
+| TUMOR_SITE_CNS/BRAIN_EVER                | TUMOR_SITES     | No   |
+| TUMOR_SITE_INTRA-ABDOMINAL_IN_WINDOW     | TUMOR_SITES     | No   |
+| TUMOR_SITE_INTRA-ABDOMINAL_EVER          | TUMOR_SITES     | No   |
+| TUMOR_SITE_LIVER_IN_WINDOW               | TUMOR_SITES     | No   |
+| TUMOR_SITE_LIVER_EVER                    | TUMOR_SITES     | No   |
+| TUMOR_SITE_LUNG_IN_WINDOW                | TUMOR_SITES     | No   |
+| TUMOR_SITE_LUNG_EVER                     | TUMOR_SITES     | No   |
+| TUMOR_SITE_LYMPH NODES_IN_WINDOW         | TUMOR_SITES     | No   |
+| TUMOR_SITE_LYMPH NODES_EVER              | TUMOR_SITES     | No   |
+| TUMOR_SITE_OTHER_IN_WINDOW               | TUMOR_SITES     | No   |
+| TUMOR_SITE_OTHER_EVER                    | TUMOR_SITES     | No   |
+| TUMOR_SITE_PLEURA_IN_WINDOW              | TUMOR_SITES     | No   |
+| TUMOR_SITE_PLEURA_EVER                   | TUMOR_SITES     | No   |
+| TUMOR_SITE_REPRODUCTIVE ORGANS_IN_WINDOW | TUMOR_SITES     | No   |
+| TUMOR_SITE_REPRODUCTIVE ORGANS_EVER      | TUMOR_SITES     | No   |
++------------------------------------------+-----------------+------+
+
+====================================================================================================
+Extended Data Table 19. Agreement of the mLoT reconstruction with curated GENIE BPC regimens at DFCI, VICC and MSK, using BPC PFS-I + Mixed (Progressing or Mixed imaging, or death)
+====================================================================================================
+
+a. Patient and episode flow
++----------------------------------------------------------------------------+-----------+-----------+-------------+
+| Step                                                                       | DFCI      | VICC      | MSK         |
+|----------------------------------------------------------------------------+-----------+-----------+-------------|
+| GENIE BPC breast cancer patients                                           | 428       | 173       | 529         |
+| Index cancer is breast carcinoma (breast sarcoma excluded)                 | 424       | 171       | 509         |
+| Metastatic disease recorded (stage IV, or a distant-metastasis date)       | 351       | 165       | 361         |
+| At least one metastatic-setting drug record and one imaging assessment     | 305       | 148       | 326         |
+| Treatment episodes formed by our algorithm                                 | 1,012     | 504       | 1,438       |
+| Excluded: no imaging report in the 90 days before the episode start        | 83        | 34        | 140         |
+| Excluded: no imaging assessment or death after the episode start           | 36        | 27        | 54          |
+| Excluded: PFS shorter than 28 days                                         | 13        | 8         | 28          |
+| Excluded by QC: chemotherapy and endocrine therapy in the same episode     | 122       | 54        | 160         |
+| Excluded by QC: endocrine therapy in HR-negative disease                   | 9         | 0         | 16          |
+| Retained episodes (patients)                                               | 749 (270) | 381 (130) | 1,040 (295) |
+| For comparison: non-LHRH BPC regimens with PFS labels in the same patients | 1,493     | 750       | 1,896       |
++----------------------------------------------------------------------------+-----------+-----------+-------------+
+
+b. Agreement with conditional denominators
++------------+-------------------------------+--------------------------------------------+-------------------------------------------------------------------+-----------------+
+| BPC site   | Same regimen / all retained   | Same event indicator, given same regimen   | Same event indicator and exact PFS duration, given same regimen   | Cohen's kappa   |
+|------------+-------------------------------+--------------------------------------------+-------------------------------------------------------------------+-----------------|
+| DFCI       | 646/749 (86.2%)               | 602/646 (93.2%)                            | 519/646 (80.3%)                                                   | 0.600           |
+| VICC       | 314/381 (82.4%)               | 297/314 (94.6%)                            | 265/314 (84.4%)                                                   | 0.595           |
+| MSK        | 868/1,040 (83.5%)             | 827/868 (95.3%)                            | 658/868 (75.8%)                                                   | 0.724           |
++------------+-------------------------------+--------------------------------------------+-------------------------------------------------------------------+-----------------+
+
+c. Regimen disagreement categories
++----------------------------------------------------------+-----------------------+-----------------------+------------------------+
+|                                                          | DFCI (749 episodes)   | VICC (381 episodes)   | MSK (1,040 episodes)   |
+|----------------------------------------------------------+-----------------------+-----------------------+------------------------|
+| Same regimen                                             | 646 (86.2%)           | 314 (82.4%)           | 868 (83.5%)            |
+| Different: treatment changed without counted progression | 60 (8.0%)             | 45 (11.8%)            | 88 (8.5%)              |
+| Different: investigational drug masked in BPC            | 0 (0.0%)              | 0 (0.0%)              | 40 (3.8%)              |
+| Different: other recording differences                   | 39 (5.2%)             | 20 (5.2%)             | 32 (3.1%)              |
+| Different: not attributed                                | 4 (0.5%)              | 2 (0.5%)              | 12 (1.2%)              |
+| Same regimen or a listed grouping difference (rows 1–3)  | 706 (94.3%)           | 359 (94.2%)           | 996 (95.8%)            |
++----------------------------------------------------------+-----------------------+-----------------------+------------------------+
+
+d. Endpoint disagreement categories
++---------------------------------------------------------------------------------------+--------------------+--------------------+-------------------+
+|                                                                                       | DFCI (646 pairs)   | VICC (314 pairs)   | MSK (868 pairs)   |
+|---------------------------------------------------------------------------------------+--------------------+--------------------+-------------------|
+| Same event indicator and exact PFS duration                                           | 519 (80.3%)        | 265 (84.4%)        | 658 (75.8%)       |
+| BPC event is a progression report in the first 28 days; our rule does not count it    | 66 (10.2%)         | 26 (8.3%)          | 133 (15.3%)       |
+| Progression reported within 28 days after a regimen switch; BPC censors at the switch | 19 (2.9%)          | 7 (2.2%)           | 28 (3.2%)         |
+| Both censored; censoring-date rules differ                                            | 19 (2.9%)          | 9 (2.9%)           | 33 (3.8%)         |
+| Start dates differ                                                                    | 1 (0.2%)           | 0 (0.0%)           | 5 (0.6%)          |
+| Other                                                                                 | 22 (3.4%)          | 7 (2.2%)           | 11 (1.3%)         |
+| Exact agreement or a listed endpoint-rule difference (rows 1–4)                       | 623 (96.4%)        | 307 (97.8%)        | 852 (98.2%)       |
++---------------------------------------------------------------------------------------+--------------------+--------------------+-------------------+
+
+====================================================================================================
+Extended Data Table 20. First-line median PFS by exact regimen in MSK-CHORD and GENIE BPC, with a published benchmark
+====================================================================================================
+
+a. Regimen medians
++---------------------------------------+---------------+--------------------+-----------------------------+-----------------------------+----------------------------------+-------------------------------------------+
+| Subtype and exact drug set            | MSK-CHORD n   | MSK-CHORD Events   | MSK-CHORD Median (95% CI)   | GENIE BPC PFS-I + Mixed n   | GENIE BPC PFS-I + Mixed Events   | GENIE BPC PFS-I + Mixed Median (95% CI)   |
+|---------------------------------------+---------------+--------------------+-----------------------------+-----------------------------+----------------------------------+-------------------------------------------|
+| HR+/HER2-                             |               |                    |                             |                             |                                  |                                           |
+| Letrozole + palbociclib               | 196           | 117                | 454 (385–601)               | 60                          | 46                               | 289 (119–373)                             |
+| Letrozole                             | 137           | 84                 | 382 (294–473)               | 57                          | 38                               | 254 (112–370)                             |
+| HR-/HER2+                             |               |                    |                             |                             |                                  |                                           |
+| Paclitaxel + pertuzumab + trastuzumab | 54            | 26                 | 658 (317–NR)                | 8                           | 7                                | 209 (59–289)                              |
+| HR-/HER2-                             |               |                    |                             |                             |                                  |                                           |
+| Capecitabine                          | 76            | 69                 | 94 (78–120)                 | 26                          | 20                               | 77 (62–217)                               |
+| Paclitaxel                            | 53            | 48                 | 91 (73–144)                 | 6                           | 5                                | 144 (17–224)                              |
+| HR+/HER2+                             |               |                    |                             |                             |                                  |                                           |
+| Paclitaxel + pertuzumab + trastuzumab | 41            | 28                 | 233 (174–289)               | 25                          | 10                               | 673 (208–NR)                              |
+| Letrozole                             | 13            | 11                 | 231 (99–339)                | 7                           | 4                                | 416 (4–NR)                                |
++---------------------------------------+---------------+--------------------+-----------------------------+-----------------------------+----------------------------------+-------------------------------------------+
+
+b. Published real-world benchmark (DeMichele et al.)
++----------------------------+-------------------------+-------------------------------+
+| Treatment                  | Patients (unweighted)   | Median PFS, months (95% CI)   |
+|----------------------------+-------------------------+-------------------------------|
+| Palbociclib plus letrozole | 772                     | 20.0 (17.5–21.9)              |
+| Letrozole alone            | 658                     | 11.9 (10.5–13.7)              |
++----------------------------+-------------------------+-------------------------------+
+
+====================================================================================================
+Extended Data Table 21. First-line and all-line endpoint sensitivities in MSK-CHORD
+====================================================================================================
+
++--------------------------------------------+-------+----------+-----------------------------+--------------------+---------------------------+
+| Progression definition                     | n     | Events   | Median PFS, days (95% CI)   | Time-dependent C   | Brier score at 365 days   |
+|--------------------------------------------+-------+----------+-----------------------------+--------------------+---------------------------|
+| First captured lines (mLoT1)               |       |          |                             |                    |                           |
+| – Original (any progression report)        | 2,342 | 1,664    | 231 (215–251)               | 0.663 ± 0.006      | 0.201 ± 0.009             |
+| – No non-progression report within 30 days | 2,342 | 1,583    | 274 (254–291)               | 0.664 ± 0.004      | 0.209 ± 0.011             |
+| – No non-progression report within 60 days | 2,341 | 1,510    | 311 (289–329)               | 0.663 ± 0.010      | 0.220 ± 0.010             |
+| – No non-progression report within 90 days | 2,340 | 1,395    | 378 (353–404)               | 0.661 ± 0.009      | 0.239 ± 0.013             |
+| All mLoTs                                  |       |          |                             |                    |                           |
+| – Original (any progression report)        | 8,791 | 7,565    | 115 (112–118)               | 0.681 ± 0.006      | 0.119 ± 0.006             |
+| – No non-progression report within 30 days | 8,791 | 7,354    | 136 (132–141)               | 0.678 ± 0.006      | 0.132 ± 0.008             |
+| – No non-progression report within 60 days | 8,790 | 7,125    | 161 (156–166)               | 0.677 ± 0.008      | 0.150 ± 0.009             |
+| – No non-progression report within 90 days | 8,789 | 6,746    | 198 (190–203)               | 0.677 ± 0.007      | 0.185 ± 0.009             |
++--------------------------------------------+-------+----------+-----------------------------+--------------------+---------------------------+
+
+(continued) Midpoint-imputation sensitivity in 2,342 first captured metastatic lines
++-----------------------------------------+----------------------+-----------------------+
+| Measure                                 | Original scan date   | Midpoint imputation   |
+|-----------------------------------------+----------------------+-----------------------|
+| Median PFS, days (95% CI)               | 231 (215–251)        | 177.5 (162.5–195.5)   |
+| Time-dependent C, mean ± fold SD        | 0.663 ± 0.006        | 0.653 ± 0.007         |
+| Brier score at 365 days, mean ± fold SD | 0.201 ± 0.009        | 0.195 ± 0.009         |
++-----------------------------------------+----------------------+-----------------------+
+
+====================================================================================================
+Extended Data Table 22. Repeated treatment lines
+====================================================================================================
+
++------------------------------------------+----------------------------+--------+
+| Pairs included                           | Comparable ordered pairs   | C      |
+|------------------------------------------+----------------------------+--------|
+| All comparable pairs (original pooled C) | 36,896,080                 | 0.6807 |
+| Within-patient pairs only                | 15,826                     | 0.6283 |
+| Between-patient pairs only               | 36,880,254                 | 0.6807 |
++------------------------------------------+----------------------------+--------+
+
+(continued) One randomly selected line per patient
++---------------------------------------------------------+---------+-----------------+
+| Evaluation set                                          | Lines   | C               |
+|---------------------------------------------------------+---------+-----------------|
+| All modeled lines (original pooled C)                   | 8,791   | 0.6807          |
+| One random line per patient, mean (SD) of 30 selections | 2,881   | 0.7071 (0.0034) |
++---------------------------------------------------------+---------+-----------------+
+
+(continued) Paired difference
++------------------------------+----------+----------------------------+
+| Comparison                   | ΔC       | 95% patient-jackknife CI   |
+|------------------------------+----------+----------------------------|
+| Mean one-line minus pooled C | +0.02645 | +0.02105 to +0.03186       |
++------------------------------+----------+----------------------------+
+
+====================================================================================================
+Extended Data Table 23. Clinical Cox reference and full multimodal models
+====================================================================================================
+
+a. Pooled out-of-fold performance
++---------------------------+-------------------------+--------+
+| Model                     | C (95% CI)              | IBS    |
+|---------------------------+-------------------------+--------|
+| Six-variable clinical Cox | 0.6426 [0.6357, 0.6502] | 0.1343 |
+| Full CoxPH                | 0.6782 [0.6719, 0.6846] | 0.1257 |
+| Full GBSA                 | 0.6807 [0.6741, 0.6873] | 0.1241 |
++---------------------------+-------------------------+--------+
+
+b. Paired differences: full model minus clinical reference
++--------------+--------------------------+----------------------------------+------------------------------+------------------+-----------------------------+
+| Full model   | ΔC (paired 95% CI)       | ΔIBS (paired 95% CI)             | Relative gain above chance   | Within-fold ΔC   | Folds favoring full model   |
+|--------------+--------------------------+----------------------------------+------------------------------+------------------+-----------------------------|
+| CoxPH        | +0.0355 [0.0305, 0.0405] | -0.008551 [-0.009933, -0.007214] | 25%                          | 0.0303 to 0.0458 | 5 of 5                      |
+| GBSA         | +0.0380 [0.0331, 0.0429] | -0.010140 [-0.011578, -0.008754] | 27%                          | 0.0320 to 0.0468 | 5 of 5                      |
++--------------+--------------------------+----------------------------------+------------------------------+------------------+-----------------------------+
+
+====================================================================================================
+Extended Data Table 24. Sensitivity to first-line status and missingness indicators, and discrimination within line groups
+====================================================================================================
+
+a. Pooled out-of-fold performance
++-----------------------------------------------------------+-------------------------+--------+
+| Model                                                     | C (95% CI)              | IBS    |
+|-----------------------------------------------------------+-------------------------+--------|
+| Full GBSA                                                 | 0.6807 [0.6741, 0.6873] | 0.1241 |
+| GBSA without first-line status and missingness indicators | 0.6784 [0.6720, 0.6852] | 0.1249 |
++-----------------------------------------------------------+-------------------------+--------+
+
+b. Paired difference: reduced minus full GBSA
++-------------------------+----------------------------------+----------------------------------+
+| Comparison              | ΔC (paired 95% CI)               | ΔIBS (paired 95% CI)             |
+|-------------------------+----------------------------------+----------------------------------|
+| Reduced minus full GBSA | -0.002254 [-0.003621, -0.000835] | +0.000785 [+0.000341, +0.001230] |
++-------------------------+----------------------------------+----------------------------------+
+
+c. Full GBSA within line groups
++----------------------+--------------------+-------------------------+
+| Line group           | Lines (patients)   | C (95% CI)              |
+|----------------------+--------------------+-------------------------|
+| All lines            | 8,791 (2,881)      | 0.6807 [0.6741, 0.6873] |
+| First lines (mLoT1)  | 2,342 (2,342)      | 0.6618 [0.6483, 0.6755] |
+| Later lines (mLoT2+) | 6,449 (2,149)      | 0.6568 [0.6488, 0.6648] |
++----------------------+--------------------+-------------------------+
+
+====================================================================================================
+Extended Data Table 25. Internal and external calibration at 180, 365 and 730 days
+====================================================================================================
+
+a. MSK-CHORD, out-of-fold predictions (8,791 lines, 2,881 patients)
++-------------------------+------------------------+-------------------------+-------------------------+
+| Measure                 | 180 days               | 365 days                | 730 days                |
+|-------------------------+------------------------+-------------------------+-------------------------|
+| CITL                    | -0.042 [-0.092, 0.009] | -0.085 [-0.150, -0.014] | -0.128 [-0.217, -0.034] |
+| Calibration slope       | 0.986 [0.930, 1.046]   | 1.078 [0.998, 1.156]    | 1.000 [0.903, 1.106]    |
+| ICI (percentage points) | 1.75 [1.16, 2.49]      | 1.57 [1.04, 2.23]       | 0.91 [0.38, 1.59]       |
+| E50 (percentage points) | 1.57 [0.87, 2.51]      | 0.65 [0.34, 1.33]       | 0.32 [0.10, 0.97]       |
+| E90 (percentage points) | 3.45 [2.28, 5.39]      | 5.22 [2.86, 7.42]       | 3.01 [0.84, 5.32]       |
++-------------------------+------------------------+-------------------------+-------------------------+
+
+b. DFCI, BPC PFS-I + Mixed (1,394 regimens, 317 patients)
++-------------------------+----------------------+----------------------+-----------------------+
+| Measure                 | 180 days             | 365 days             | 730 days              |
+|-------------------------+----------------------+----------------------+-----------------------|
+| CITL                    | 0.485 [0.316, 0.650] | 0.237 [0.057, 0.449] | 0.090 [-0.134, 0.376] |
+| Calibration slope       | 1.470 [1.178, 1.807] | 1.426 [1.153, 1.744] | 1.371 [1.024, 1.836]  |
+| ICI (percentage points) | 11.28 [7.80, 14.87]  | 4.65 [2.55, 8.01]    | 1.72 [1.02, 4.72]     |
+| E50 (percentage points) | 12.64 [7.79, 16.28]  | 4.89 [1.82, 8.75]    | 1.46 [0.85, 4.90]     |
+| E90 (percentage points) | 15.85 [12.09, 20.88] | 7.29 [4.74, 11.16]   | 3.48 [1.77, 8.48]     |
++-------------------------+----------------------+----------------------+-----------------------+
+
+c. VICC, BPC PFS-I + Mixed (695 regimens, 152 patients)
++-------------------------+----------------------+----------------------+----------------------+
+| Measure                 | 180 days             | 365 days             | 730 days             |
+|-------------------------+----------------------+----------------------+----------------------|
+| CITL                    | 0.555 [0.356, 0.746] | 0.462 [0.225, 0.784] | 0.430 [0.016, 0.920] |
+| Calibration slope       | 1.484 [1.062, 2.047] | 1.678 [1.099, 2.461] | 1.591 [0.877, 2.688] |
+| ICI (percentage points) | 12.94 [8.92, 17.10]  | 9.16 [5.78, 13.27]   | 5.26 [2.39, 8.87]    |
+| E50 (percentage points) | 14.37 [9.22, 18.87]  | 10.20 [5.93, 14.81]  | 5.88 [2.18, 9.79]    |
+| E90 (percentage points) | 17.58 [11.99, 24.05] | 13.02 [8.16, 18.80]  | 7.72 [3.62, 14.42]   |
++-------------------------+----------------------+----------------------+----------------------+
+
+d. DFCI: before and after recalibration
++-------------------+---------------+------------------------+------------------------+-----------------------+
+| Measure           | Predictions   | 180 days               | 365 days               | 730 days              |
+|-------------------+---------------+------------------------+------------------------+-----------------------|
+| ICI               | Original      | 11.28 [7.80, 14.87]    | 4.65 [2.55, 8.01]      | 1.72 [1.02, 4.72]     |
+|                   | Updated       | 0.79 [0.66, 4.76]      | 0.71 [0.60, 4.12]      | 1.07 [0.59, 4.15]     |
+| CITL              | Original      | 0.485 [0.316, 0.650]   | 0.237 [0.057, 0.449]   | 0.090 [-0.134, 0.376] |
+|                   | Updated       | -0.002 [-0.183, 0.174] | -0.003 [-0.196, 0.221] | 0.000 [-0.237, 0.296] |
+| Calibration slope | Original      | 1.470 [1.178, 1.807]   | 1.426 [1.153, 1.744]   | 1.371 [1.024, 1.836]  |
+|                   | Updated       | 0.950 [0.761, 1.179]   | 0.950 [0.759, 1.164]   | 0.949 [0.700, 1.280]  |
+| E50               | Original      | 12.64 [7.79, 16.28]    | 4.89 [1.82, 8.75]      | 1.46 [0.85, 4.90]     |
+|                   | Updated       | 0.74 [0.46, 5.07]      | 0.64 [0.44, 4.45]      | 0.70 [0.31, 3.90]     |
+| E90               | Original      | 15.85 [12.09, 20.88]   | 7.29 [4.74, 11.16]     | 3.48 [1.77, 8.48]     |
+|                   | Updated       | 1.70 [1.22, 7.99]      | 1.21 [1.05, 7.67]      | 1.59 [1.02, 8.11]     |
++-------------------+---------------+------------------------+------------------------+-----------------------+
+
+e. VICC: before and after recalibration
++-------------------+---------------+------------------------+------------------------+------------------------+
+| Measure           | Predictions   | 180 days               | 365 days               | 730 days               |
+|-------------------+---------------+------------------------+------------------------+------------------------|
+| ICI               | Original      | 12.94 [8.92, 17.10]    | 9.16 [5.78, 13.27]     | 5.26 [2.39, 8.87]      |
+|                   | Updated       | 0.71 [0.84, 5.69]      | 1.81 [1.03, 5.65]      | 0.97 [0.83, 5.36]      |
+| CITL              | Original      | 0.555 [0.356, 0.746]   | 0.462 [0.225, 0.784]   | 0.430 [0.016, 0.920]   |
+|                   | Updated       | -0.000 [-0.215, 0.199] | -0.002 [-0.265, 0.338] | -0.006 [-0.462, 0.514] |
+| Calibration slope | Original      | 1.484 [1.062, 2.047]   | 1.678 [1.099, 2.461]   | 1.591 [0.877, 2.688]   |
+|                   | Updated       | 0.962 [0.683, 1.332]   | 0.912 [0.562, 1.397]   | 0.803 [0.364, 1.426]   |
+| E50               | Original      | 14.37 [9.22, 18.87]    | 10.20 [5.93, 14.81]    | 5.88 [2.18, 9.79]      |
+|                   | Updated       | 0.69 [0.62, 5.81]      | 1.95 [0.77, 5.97]      | 1.04 [0.53, 4.96]      |
+| E90               | Original      | 17.58 [11.99, 24.05]   | 13.02 [8.16, 18.80]    | 7.72 [3.62, 14.42]     |
+|                   | Updated       | 1.46 [1.45, 10.76]     | 2.96 [1.69, 10.98]     | 1.59 [1.35, 10.80]     |
++-------------------+---------------+------------------------+------------------------+------------------------+
+
+f. DFCI and VICC pooled (2,089 regimens, 469 patients): ICI before and after the site-specific updates
++-----------+---------------+------------+------------+------------+
+| Measure   | Predictions   | 180 days   | 365 days   | 730 days   |
+|-----------+---------------+------------+------------+------------|
+| ICI       | Original      | 11.86      | 6.05       | 2.62       |
+|           | Updated       | 0.80       | 0.51       | 0.59       |
++-----------+---------------+------------+------------+------------+
+
+====================================================================================================
+Extended Data Table 26. Sensitivity to the number of recorded metastatic-site categories
+====================================================================================================
+
+a. Pooled out-of-fold performance
++----------------------+----------------------------+---------+
+| Model                | C (95% CI)                 | IBS     |
+|----------------------+----------------------------+---------|
+| Original GBSA        | 0.68065 [0.67405, 0.68731] | 0.12412 |
+| GBSA plus site count | 0.68119 [0.67453, 0.68767] | 0.12405 |
++----------------------+----------------------------+---------+
+
+b. Paired differences: site count minus original
++---------------------------+-------------------------------+-------------------------------+
+| Comparison                | ΔC (paired 95% CI)            | ΔIBS (paired 95% CI)          |
+|---------------------------+-------------------------------+-------------------------------|
+| Site count minus original | +0.00054 [-0.00064, +0.00174] | -0.00007 [-0.00045, +0.00028] |
++---------------------------+-------------------------------+-------------------------------+
+
+====================================================================================================
+Extended Data Table 27. Sensitivity to the pre-line imaging requirement
+====================================================================================================
+
++----------------------------------------+---------+------------+--------------------------+--------+
+| Cohort                                 | Lines   | Patients   | C (95% CI)               | IBS    |
+|----------------------------------------+---------+------------+--------------------------+--------|
+| Original 90-day cohort                 | 8,791   | 2,881      | 0.6807 [0.6741, 0.6873]  | 0.1241 |
+| Expanded 180-day cohort                | 9,055   | 2,922      | 0.6828 [0.6758, 0.6891]  | 0.1265 |
+| Added 91–180-day group                 | 264     | 244        | 0.6638 [0.6210, 0.7093]  | 0.2073 |
+| Paired change, expanded minus original |         |            | +0.0022 [0.0007, 0.0037] |        |
++----------------------------------------+---------+------------+--------------------------+--------+
+
+====================================================================================================
+Extended Data Table 28. Late-start chemotherapy plus endocrine QC exclusions in MSK-CHORD
+====================================================================================================
+
+a. Lines flagged by the chemotherapy plus endocrine rule
++------------------------------------------------------+---------+------------+---------------+--------------+---------------------+
+| Group                                                | Lines   | Patients   | First lines   | Events (%)   | Median PFS (days)   |
+|------------------------------------------------------+---------+------------+---------------+--------------+---------------------|
+| Chemotherapy start; endocrine therapy added later    | 278     | 269        | 174           | 54.7         | 482                 |
+| Endocrine start; chemotherapy added later            | 244     | 235        | 69            | 81.6         | 269                 |
+| Neither class in the first 28 days; both added later | 3       | 3          | 0             | 66.7         | 402                 |
+| Late-start lines, total                              | 525     | 489        | 243           | 67.2         | 344                 |
+| Both classes recorded within the first 28 days       | 1,589   | 985        | 244           | 91.3         | 113                 |
+| Original retained cohort                             | 8,791   | 2,881      | 2,342         | 86.1         | 115                 |
++------------------------------------------------------+---------+------------+---------------+--------------+---------------------+
+
+b. Refits: discrimination on the original 8,791 lines
++-------------------------------------------------+---------+-----------------------------+----------------------------+----------------------------+
+| Refit cohort                                    | Lines   | C on original 8,791 lines   | Paired ΔC (95% CI)         | Paired ΔIBS (95% CI)       |
+|-------------------------------------------------+---------+-----------------------------+----------------------------+----------------------------|
+| Original analysis                               | 8,791   | 0.6807                      | reference                  | reference                  |
+| 505 late-start lines restored, full PFS         | 9,296   | 0.6799                      | -0.0008 [-0.0017, +0.0001] | -0.0001 [-0.0005, +0.0003] |
+| 505 late-start lines censored at addition       | 9,296   | 0.6802                      | -0.0004 [-0.0013, +0.0004] | +0.0000 [-0.0003, +0.0004] |
+| Late-start and HR-positive GnRH groups restored | 9,485   | 0.6800                      | -0.0007 [-0.0017, +0.0003] | -0.0001 [-0.0005, +0.0003] |
+| Chemotherapy plus endocrine rule removed        | 10,824  | 0.6808                      | +0.0002 [-0.0010, +0.0013] | -0.0001 [-0.0005, +0.0003] |
+| All QC exclusions restored                      | 11,085  | 0.6810                      | +0.0003 [-0.0009, +0.0015] | -0.0002 [-0.0007, +0.0002] |
++-------------------------------------------------+---------+-----------------------------+----------------------------+----------------------------+
+
+c. One-year calibration in the 9,296-line cohort, original and refit models
++---------------------------+---------+-------------------------------------+----------+---------------------+--------------------------------+---------+---------------+
+| Stratum                   | Lines   | Observed one-year PFS, % (95% CI)   | Model    | Mean predicted, %   | Predicted - observed, points   | Slope   | ICI, points   |
+|---------------------------+---------+-------------------------------------+----------+---------------------+--------------------------------+---------+---------------|
+| HR+/HER2+ first lines     | 159     | 55.1 [46.6, 62.9]                   | Original | 38.2                | -17.0                          | 0.853   | 17.83         |
+| starting on chemotherapy  |         |                                     | Refit    | 44.6                | -10.5                          | 1.138   | 11.93         |
+| HR+/HER2- first lines     | 373     | 37.0 [31.9, 42.1]                   | Original | 27.3                | -9.7                           | 1.705   | 11.02         |
+| starting on chemotherapy  |         |                                     | Refit    | 33.6                | -3.4                           | 1.918   | 10.70         |
+| All HR+/HER2+             | 315     | 45.4 [39.6, 51.1]                   | Original | 39.0                | -6.5                           | 0.907   | 7.05          |
+| first lines               |         |                                     | Refit    | 43.8                | -1.6                           | 1.200   | 3.14          |
+| HR+ endocrine-start lines | 3,836   | 29.6 [28.1, 31.1]                   | Original | 26.5                | -3.1                           | 1.177   | 3.45          |
+| including restored        |         |                                     | Refit    | 27.7                | -1.9                           | 1.171   | 2.52          |
+| Triple-negative           | 1,032   | 10.9 [9.0, 13.0]                    | Original | 11.6                | +0.7                           | 0.844   | 1.28          |
+|                           |         |                                     | Refit    | 11.9                | +1.0                           | 0.810   | 1.67          |
+| HR-/HER2+                 | 437     | 28.6 [24.2, 33.0]                   | Original | 22.9                | -5.6                           | 0.995   | 5.61          |
+|                           |         |                                     | Refit    | 23.4                | -5.2                           | 1.004   | 5.28          |
+| All lines                 | 9,296   | 20.2 [19.4, 21.1]                   | Original | 18.1                | -2.2                           | 1.096   | 2.24          |
+|                           |         |                                     | Refit    | 19.2                | -1.1                           | 1.100   | 1.81          |
+| Restored late-start lines | 505     | 47.1 [42.5, 51.4]                   | Original | 25.0                | -22.0                          | 1.230   | 22.25         |
+| only                      |         |                                     | Refit    | 29.1                | -17.9                          | 1.240   | 18.24         |
++---------------------------+---------+-------------------------------------+----------+---------------------+--------------------------------+---------+---------------+
+
+d. External evaluation before recalibration, original / refit
++--------+------------+------------+-----------------+-----------------+-----------------------+
+| Site   | Regimens   | Patients   | C               | IBS             | 180-day ICI, points   |
+|--------+------------+------------+-----------------+-----------------+-----------------------|
+| DFCI   | 1,394      | 317        | 0.6508 / 0.6542 | 0.1656 / 0.1682 | 11.28 / 13.36         |
+| VICC   | 695        | 152        | 0.6352 / 0.6363 | 0.1589 / 0.1627 | 12.94 / 15.00         |
++--------+------------+------------+-----------------+-----------------+-----------------------+
+
+e. Reconstruction agreement with GENIE BPC before QC
++--------+-----------------------------------+-----------------------------------+-----------------------------------------------------+-----------------------------------------------------+
+| Site   | Same regimen: Retained episodes   | Same regimen: QC filter removed   | Same event, given same regimen: Retained episodes   | Same event, given same regimen: QC filter removed   |
+|--------+-----------------------------------+-----------------------------------+-----------------------------------------------------+-----------------------------------------------------|
+| DFCI   | 646/749 (86.2%)                   | 718/880 (81.6%)                   | 602/646 (93.2%)                                     | 669/718 (93.2%)                                     |
+| VICC   | 314/381 (82.4%)                   | 334/435 (76.8%)                   | 297/314 (94.6%)                                     | 315/334 (94.3%)                                     |
+| MSK    | 868/1,040 (83.5%)                 | 944/1,216 (77.6%)                 | 827/868 (95.3%)                                     | 897/944 (95.0%)                                     |
++--------+-----------------------------------+-----------------------------------+-----------------------------------------------------+-----------------------------------------------------+
+
+f. Late-start BPC episodes excluded by the chemotherapy plus endocrine rule
++-----------+------------+-----------------------------------------+---------------------------+-----------------------------------------+
+| Site      | Episodes   | Later class in a separate BPC regimen   | Same regimen, all drugs   | Same regimen, drugs started by day 28   |
+|-----------+------------+-----------------------------------------+---------------------------+-----------------------------------------|
+| DFCI      | 37         | 37/37 (100.0%)                          | 0/37 (0.0%)               | 27/37 (73.0%)                           |
+| VICC      | 21         | 21/21 (100.0%)                          | 1/21 (4.8%)               | 17/21 (81.0%)                           |
+| MSK       | 69         | 69/69 (100.0%)                          | 1/69 (1.4%)               | 54/69 (78.3%)                           |
+| All sites | 127        | 127/127 (100.0%)                        | 2/127 (1.6%)              | 98/127 (77.2%)                          |
++-----------+------------+-----------------------------------------+---------------------------+-----------------------------------------+
+
+g. First-line median PFS with late-start lines restored
++-----------------------------------------+--------------------------+----------------------------------+------------------------------------+--------------------------------------------+
+| Subtype and exact initial drug set      | Retained cohort: lines   | Retained cohort: median (days)   | Late-start lines restored: lines   | Late-start lines restored: median (days)   |
+|-----------------------------------------+--------------------------+----------------------------------+------------------------------------+--------------------------------------------|
+| HR+/HER2-: all first lines              | 1,565                    | 275                              | 1,730                              | 301                                        |
+| – Letrozole + palbociclib               | 196                      | 454                              | 203                                | 448                                        |
+| – Letrozole                             | 137                      | 382                              | 146                                | 385                                        |
+| HR+/HER2+: all first lines              | 247                      | 240                              | 315                                | 310                                        |
+| – Paclitaxel + pertuzumab + trastuzumab | 41                       | 233                              | 76                                 | 434                                        |
++-----------------------------------------+--------------------------+----------------------------------+------------------------------------+--------------------------------------------+
+
+====================================================================================================
+Extended Data Fig. 1. Subtype-stratified time-dependent discrimination of GBSA
+[fig:ext-subgroup-time-perf]
+====================================================================================================
+
+subfigure: fig:auc-subgroup
++-----------+---------------+---------------+---------------+---------------+
+| Subtype   | 90d           | 180d          | 365d          | 730d          |
+|-----------+---------------+---------------+---------------+---------------|
+| HR-/HER2- | 0.695 ± 0.035 | 0.734 ± 0.052 | 0.801 ± 0.046 | 0.807 ± 0.057 |
+| HR-/HER2+ | 0.713 ± 0.082 | 0.762 ± 0.034 | 0.775 ± 0.062 | 0.783 ± 0.072 |
+| HR+/HER2- | 0.737 ± 0.007 | 0.771 ± 0.008 | 0.836 ± 0.010 | 0.858 ± 0.017 |
+| HR+/HER2+ | 0.700 ± 0.020 | 0.692 ± 0.031 | 0.745 ± 0.045 | 0.798 ± 0.048 |
++-----------+---------------+---------------+---------------+---------------+
+
+subfigure: fig:ipcw-subgroup
++-----------+---------------+---------------+---------------+---------------+
+| Subtype   | 90d           | 180d          | 365d          | 730d          |
+|-----------+---------------+---------------+---------------+---------------|
+| HR-/HER2- | 0.648 ± 0.017 | 0.641 ± 0.021 | 0.642 ± 0.020 | 0.642 ± 0.019 |
+| HR-/HER2+ | 0.685 ± 0.055 | 0.684 ± 0.031 | 0.677 ± 0.034 | 0.675 ± 0.032 |
+| HR+/HER2- | 0.695 ± 0.008 | 0.688 ± 0.006 | 0.688 ± 0.007 | 0.686 ± 0.007 |
+| HR+/HER2+ | 0.674 ± 0.024 | 0.650 ± 0.017 | 0.647 ± 0.018 | 0.646 ± 0.017 |
++-----------+---------------+---------------+---------------+---------------+
+
+====================================================================================================
+Extended Data Fig. 2. Mean normalized SHAP contributions aggregated by clinical feature groups
+[fig:grouped-shap]
+====================================================================================================
+
++------------------------------------+------------------------------+
+| Feature group                      |   Mean normalized SHAP share |
+|------------------------------------+------------------------------|
+| Tumor site burden                  |                       0.2415 |
+| Treatment exposure                 |                       0.2049 |
+| Tumor marker kinetics              |                       0.1976 |
+| Genomics and therapeutic targets   |                       0.1059 |
+| Measurement cadence                |                       0.0802 |
+| Imaging coverage and cancer status |                       0.0613 |
+| Initial diagnosis                  |                       0.0588 |
+| Recent ECOG status                 |                       0.0498 |
++------------------------------------+------------------------------+
+
+====================================================================================================
+Extended Data Fig. 3. Kaplan-Meier estimates of PFS for modeled mLoTs and lines excluded for missing radiology screening
+[fig:km-no-rad-prior]
+====================================================================================================
+
++-----------------------------------+---------+------------+------------------+---------------+
+| Cohort                            |   mLoTs |   Patients |   Event rate (%) | Median PFS    |
+|-----------------------------------+---------+------------+------------------+---------------|
+| Modeled cohort                    |    8791 |       2881 |            86.05 | 115 (112-118) |
+| Dropped: no radiology <=90d prior |     841 |        689 |            57.43 | 390 (307-453) |
++-----------------------------------+---------+------------+------------------+---------------+
+
+====================================================================================================
+Extended Data Fig. 4. Late-start treatment leakage analysis
+[fig:km-diff-preds]
+====================================================================================================
+
++---------------------+---------+------------+------------------+---------------+
+| Group               |   mLoTs |   Patients |   Event rate (%) | Median PFS    |
+|---------------------+---------+------------+------------------+---------------|
+| Rest                |    6647 |       2488 |            89.71 | 99 (98-102)   |
+| Late start          |    2144 |       1532 |            74.72 | 224 (209-244) |
+| Late-start systemic |    1077 |        907 |            74.37 | 250 (227-271) |
+| Late-start local    |    1067 |        858 |            75.07 | 192 (175-217) |
++---------------------+---------+------------+------------------+---------------+
+
+Calibration error summaries:
++------------------------+----------+
+| Curve comparison       |      MAE |
+|------------------------+----------|
+| rest_clean_vs_km       | 0.030506 |
+| rest_leakage_vs_km     | 0.015628 |
+| late_clean_vs_km       | 0.127456 |
+| late_leakage_vs_km     | 0.096929 |
+| systemic_clean_vs_km   | 0.142258 |
+| systemic_leakage_vs_km | 0.121877 |
+| local_clean_vs_km      | 0.118539 |
+| local_leakage_vs_km    | 0.077889 |
++------------------------+----------+
+
+GBSA leakage delta row:
++---------+-----------+-------------+-------------+----------------------+
+| model   |   delta_C |   delta_IBS |   delta_AUC |   p_signflip_c_index |
+|---------+-----------+-------------+-------------+----------------------|
+| gbsa    | 0.0103887 | -0.00444717 |   0.0131608 |              0.03125 |
++---------+-----------+-------------+-------------+----------------------+
+
+====================================================================================================
+Extended Data Fig. 5. Calibration curves at 180, 365 and 730 days
+[fig:continuous-calibration]
+====================================================================================================
+
+Drawn by analyses/calibration_figures.py from results/rebuttal/calibration/curves.csv. The calibration metrics are in Extended Data Table 25.
++-----------+---------+------------+
+| Cohort    |   Lines |   Patients |
+|-----------+---------+------------|
+| MSK-CHORD |    8791 |       2881 |
+| DFCI      |    1394 |        317 |
+| VICC      |     695 |        152 |
++-----------+---------+------------+
+
+====================================================================================================
+Extended Data Fig. 6. Observed and predicted PFS by original predicted-risk tertile at DFCI and VICC
+[fig:external-tertile-calibration]
+====================================================================================================
+
+Drawn by analyses/calibration_figures.py. Tertiles of the original predicted 365-day risk.
++----------+-----------+---------------+------------+------------+-------------------+--------------------------+-----------------------+-----------+
+| Cohort   | Tertile   |   Horizon (d) |   Regimens |   Patients |   Observed KM (%) |   Original predicted (%) |   Local CV update (%) |   At risk |
+|----------+-----------+---------------+------------+------------+-------------------+--------------------------+-----------------------+-----------|
+| DFCI     | Low       |           180 |        465 |        228 |              58.9 |                     64.8 |                  58.6 |       222 |
+| DFCI     | Middle    |           180 |        464 |        212 |              40.3 |                     52.6 |                  40.4 |       148 |
+| DFCI     | High      |           180 |        465 |        179 |              19.7 |                     34.4 |                  19.1 |        68 |
+| DFCI     | Low       |           365 |        465 |        228 |              42.6 |                     44   |                  42.8 |       138 |
+| DFCI     | Middle    |           365 |        464 |        212 |              23.2 |                     29.6 |                  23.5 |        64 |
+| DFCI     | High      |           365 |        465 |        179 |               9.1 |                     13.9 |                   7.7 |        22 |
+| DFCI     | Low       |           730 |        465 |        228 |              28.6 |                     27.5 |                  28.7 |        72 |
+| DFCI     | Middle    |           730 |        464 |        212 |              11.6 |                     14.7 |                  12   |        24 |
+| DFCI     | High      |           730 |        465 |        179 |               2.7 |                      4.7 |                   2.6 |         5 |
+| VICC     | Low       |           180 |        232 |        109 |              56.1 |                     64.1 |                  56   |        97 |
+| VICC     | Middle    |           180 |        231 |        113 |              36.3 |                     53   |                  39.1 |        62 |
+| VICC     | High      |           180 |        232 |         94 |              22.8 |                     36.1 |                  19.5 |        34 |
+| VICC     | Low       |           365 |        232 |        109 |              37.5 |                     43.1 |                  38.2 |        52 |
+| VICC     | Middle    |           365 |        231 |        113 |              16.9 |                     29.9 |                  19.1 |        20 |
+| VICC     | High      |           365 |        232 |         94 |               9.5 |                     15   |                   5.7 |         9 |
+| VICC     | Low       |           730 |        232 |        109 |              23.5 |                     26.5 |                  22.4 |        23 |
+| VICC     | Middle    |           730 |        231 |        113 |               3.9 |                     14.9 |                   8.3 |         3 |
+| VICC     | High      |           730 |        232 |         94 |               5.5 |                      5.3 |                   1.7 |         3 |
++----------+-----------+---------------+------------+------------+-------------------+--------------------------+-----------------------+-----------+
+Regimens observed event-free through 730 days: DFCI 101, VICC 29

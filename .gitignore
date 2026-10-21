@@ -35,6 +35,4 @@ analyses/**
 !analyses/**/
 !analyses/**/*.py
 analysis_data.txt
-manuscript_data.txt
-extended_data.txt
 rebuttal_data.txt
